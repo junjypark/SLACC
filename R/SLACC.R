@@ -14,7 +14,7 @@ SLACC = function(dat, mod, L = 5, batch = NULL, maxIter = 20, eps = 1e-3, ADMM_m
   nonzero = which(apply(dat,2,sum)!=0)
   p0 = length(nonzero)
   
-  if ( is.null(tau) ){ tau = 0.5*sqrt(log(V*L)/n) }
+  if ( is.null(tau) ){ tau = 0.3*sqrt(log(V*L)/n) }
   if ( is.null(lambda) ){ lambda = log(n*p0) }
 
   #Initialize
@@ -163,5 +163,5 @@ SLACC = function(dat, mod, L = 5, batch = NULL, maxIter = 20, eps = 1e-3, ADMM_m
   #Produce estimates
   estimates = list(A = A, S = S, U = U, B = B, R = R, sigma2 = sigma2_g, phi2 = phi2_g)
   
-  return(list(estimates = estimates, logLik = ll, BIC = BIC, dat_harmonized = dat_harmonized))
+  return(list(estimates = estimates, logLik = ll, BIC = BIC, dat_harmonized = dat_harmonized, X=X))
 }
