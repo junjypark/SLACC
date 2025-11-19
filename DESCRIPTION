@@ -7,4 +7,4 @@ Maintainer: Jun Young Park <junjy.park@utronto.ca>
 Description: TBD
 License: GPL-3
 Encoding: UTF-8
-Depends: MASS, denoiseR, rTensor
+Depends: MASS, denoiseR, rTensor, foreach
