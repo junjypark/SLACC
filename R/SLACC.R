@@ -135,7 +135,7 @@ SLACC = function(dat, mod, L = 5, batch = NULL, maxIter = 20, eps = 1e-3, ADMM_m
     #Mean harmonization
     center_vec=as.numeric(crossprod(w_g, Gamma_hat))  
     Gamma_cent = sweep(Gamma_hat, 2, center_vec, "-")    
-    A_mean_harmonized = A - X[,1:M] %*% Gamma_cent   
+    XB_mean_harmonized = X %*% B - X[,1:M] %*% Gamma_cent   
     
     #Latent residual harmonization
     for (g in 1:M) {
@@ -146,7 +146,7 @@ SLACC = function(dat, mod, L = 5, batch = NULL, maxIter = 20, eps = 1e-3, ADMM_m
       A_resid_harmonized_idx = sweep(A_resid_idx, 2, sf, FUN = "*")
       
       # bio mean + 조화된 residual
-      A_harmonized[idx, ] = A_mean_harmonized[idx,] + A_resid_harmonized_idx
+      A_harmonized[idx, ] = XB_mean_harmonized[idx,] + A_resid_harmonized_idx
     }
     
     #Residual harmonization
