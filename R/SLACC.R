@@ -127,12 +127,18 @@ SLACC = function(dat, mod, L = 5, batch = NULL, maxIter = 20, eps = 1e-3, ADMM_m
   dat_harmonized = NULL
   if (M>1 & harmonize){
     dat_harmonized = matrix(0, nrow = n, ncol = p)
-    ng = vapply(groups, length, 0L)
-    w_g = ng/sum(ng)                        
-    sigma2_star = as.numeric(colSums(sigma2_g * w_g))     
-    phi2_star = sum(w_g * phi2_g)   
-
-    gamma_hat = B[1:M,,drop=FALSE]      # M×L
+    
+    wi = numeric(n)
+    for (g in seq_len(M)) wi[groups[[g]]] = 1/(2*pmax(as.numeric(phi2_g[g]), 1e-10))
+    wi = wi / sum(wi)
+    
+    w_g = vapply(seq_len(M), function(g) sum(wi[groups[[g]]]), 0.0)
+    w_g = pmax(w_g, 1e-10); w_g <- w_g/sum(w_g)
+    
+    sigma2_star = as.numeric(colSums(sigma2_g * w_g))
+    phi2_star = sum(w_g * phi2_g)    
+    
+    gamma_hat = B[1:M,,drop=FALSE]   
     A_harmonized = matrix(NA, nrow = n, ncol = L)
     
     #Mean harmonization
