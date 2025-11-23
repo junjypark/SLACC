@@ -1,4 +1,4 @@
-SLACC = function(dat, mod, L = 5, batch = NULL, maxIter = 20, eps = 1e-3, ADMM_maxIter = 100, ADMM_eps = 1e-3, init = NULL,
+SLACC = function(dat, mod = NULL, L = 5, batch = NULL, maxIter = 20, eps = 1e-3, ADMM_maxIter = 100, ADMM_eps = 1e-3, init = NULL,
                  lambda = NULL, tau = NULL, harmonize = TRUE){
   n = nrow(dat); p = ncol(dat); V = (sqrt(1+8*p)-1)/2;
   
@@ -7,8 +7,13 @@ SLACC = function(dat, mod, L = 5, batch = NULL, maxIter = 20, eps = 1e-3, ADMM_m
   groups = split(seq_len(n), batch)
   M = length(groups)
   
-  if ( M==1 ){ X = model.matrix(~mod) } 
-  else{ X = cbind(model.matrix(~batch-1), model.matrix(~mod-1)) }
+  if (is.null(mod)){
+    if ( M==1 ){ X = model.matrix(~1) } 
+    else{ X = cbind(model.matrix(~batch-1)) }
+  } else{
+    if ( M==1 ){ X = model.matrix(~mod) } 
+    else{ X = cbind(model.matrix(~batch-1), model.matrix(~mod-1)) }    
+  }
 
   q = ncol(X)
   nonzero = which(apply(dat,2,sum)!=0)
