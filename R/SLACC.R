@@ -163,16 +163,20 @@ SLACC = function(dat, mod = NULL, L = 5, batch = NULL, maxIter = 20, eps = 1e-3,
     }
     
     #Residual harmonization
+    cm_g = matrix(NA, M, p0)
     for (g in 1:M) {
       idx = groups[[g]]
       E_g = dat[idx,nonzero,drop=FALSE] - tcrossprod(A[idx,,drop=FALSE], S[nonzero,,drop=FALSE])
+      
+      cm_g[g,] = colMeans(E_g)
+      E_g = E_g-rep(1, length(idx))%*%t(cm_g[g,])
+
       sphi = sqrt(phi2_star/phi2_g[g])
       E_g_harmonized = sphi * E_g
-      Signal_g_harmonized = tcrossprod(A_harmonized[idx,,drop=FALSE], S[nonzero,,drop=FALSE])
-      dat_harmonized[idx,nonzero] = Signal_g_harmonized + E_g_harmonized
+      dat_harmonized[idx,nonzero] = tcrossprod(A_harmonized[idx,,drop=FALSE], S[nonzero,,drop=FALSE]) + E_g_harmonized
     }
     
-    estimates_harmonization=list(sigma2_star = sigma2_star, phi2_star = phi2_star, center_vec = center_vec)
+    estimates_harmonization=list(A_harmonized = A_harmonized, cm_g = cm_g, sigma2_star = sigma2_star, phi2_star = phi2_star, center_vec = center_vec)
   } 
   
   return(list(estimates = estimates, estimates_harmonization = estimates_harmonization, logLik = ll, BIC = BIC, dat_harmonized = dat_harmonized, X=X, batch_levels=levels(batch), nonzero=nonzero))
