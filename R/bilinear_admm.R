@@ -9,11 +9,12 @@ bilinear_admm = function(Y, A, w, C, lambda,
   stopifnot(length(w)==n, all(dim(C)==c(Vdim, Ldim)))
   if (is.null(Q)) Q = matrix(0, Ldim, Ldim)
 
-  # initalize
+  # initialize
   if (is.null(U0)) {
     Ybar = apply(Y, c(2,3), mean)
     ev = eigen((Ybar + t(Ybar))/2, symmetric = TRUE)
     U = ev$vectors[, seq_len(Ldim), drop = FALSE]
+    V = U
   } else {
     U = U0
     V = if (is.null(V0)) U else V0
