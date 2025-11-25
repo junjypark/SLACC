@@ -35,7 +35,8 @@ bilinear_admm = function(Y, A, w, C, lambda,
       GV = GV + w[i] * (Ai %*% VtV %*% t(Ai))
       HV = HV + w[i] * (Yi %*% V %*% t(Ai))
     }
-    K = GV + (rho + eta + gamma) * diag(Ldim) + (wsum/2) * Q
+    # K = GV + (rho + eta + gamma) * diag(Ldim) + (wsum/2) * Q
+    K = GV + (rho + eta + gamma) * diag(Ldim) + wsum * (VtV*Q)
     K = (K + t(K))/2
     cholK = chol(K)
     T_U = rho*(ZU - WU) + eta*(V - Yeq)
@@ -56,7 +57,8 @@ bilinear_admm = function(Y, A, w, C, lambda,
       GU = GU + w[i] * (Ai %*% UtU %*% t(Ai))
       HU = HU + w[i] * (t(Yi) %*% U %*% t(Ai))
     }
-    K = GU + (rho + eta + gamma) * diag(Ldim) + (wsum/2) * Q
+    # K = GU + (rho + eta + gamma) * diag(Ldim) + (wsum/2) * Q
+    K = GU + (rho + eta + gamma) * diag(Ldim) + wsum * (UtU*Q)
     K = (K + t(K))/2
     cholK = chol(K)
     T_V = rho*(ZV - WV) + eta*(U + Yeq)
