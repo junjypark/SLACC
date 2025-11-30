@@ -9,13 +9,9 @@ prepare_elements = function(dat, A, U, L, phi2, tau=NULL, ni){
     Y[i,,] = Ltrinv(dat[i,],V)
     X[i,,] = diag(A[i,], ncol=L)
   }
-  subj_wts = 1/phi2/2
+  subj_wts = 1/phi2
   
-  if (is.null(tau)){
-    B_wts = matrix(1,V,L)
-  } else{
-    B_wts = (abs(U)<=tau)/tau    
-  }
+  B_wts = (abs(U)<=tau)/tau    
   
   return(list( Y=Y, X=X, subj_wts=subj_wts, B_wts=B_wts ))
 }
