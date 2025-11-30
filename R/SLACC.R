@@ -68,11 +68,12 @@ SLACC = function(dat, mod = NULL, L = 5, batch = NULL, maxIter = 20, eps = 1e-3,
     #M step - update U
     prep = prepare_elements(dat, A=A, U=U, L=L, phi2=phi2_g, tau=tau, ni=ni)
     w = prep$subj_wts
-    w = w/sum(w)
+    # w = w/sum(w)
     prep$subj_wts = w
     prep$B_wts = (abs(U) <= tau) / tau
     w_g = vapply(groups, function(idx) sum(w[idx]), 0.0)
     Qbar = Reduce("+", Map(function(Qg, wg) wg * Qg, Q_list, as.list(w_g)))
+    Qbar = Qbar / sum(w_g)
     U = bilinear_admm(Y = prep$Y, A = prep$X, w = prep$subj_wts, Q = Qbar, C = prep$B_wts, U0=U, lambda = lambda/2, maxit = ADMM_maxIter, tol = ADMM_eps)$U
 
     for (l in 1:L){
