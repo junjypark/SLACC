@@ -1,5 +1,4 @@
 importFrom(foreach)
 importFrom(MASS)
-importFrom(denoiseR)
 importFrom(rTensor)
 export(SLACC)
