@@ -24,7 +24,7 @@ SLACC = function(dat, mod = NULL, L = 5, batch = NULL, maxIter = 20, eps = 1e-3,
 
   #Initialize
   if (is.null(init)){
-    init = HOSVD_initial(dat, L, X, batch)
+    init = HOSVD_initial(dat, L, X, batch, nonzero)
     A = init$A; B = init$B; U = U_prev = init$U; S = init$S;
     phi2_g = init$phi2; sigma2_g = init$sigma2
     R = diag(L)                            
