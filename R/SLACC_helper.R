@@ -2,18 +2,18 @@ Ltrans = function(X,d = TRUE){ X[upper.tri(X,d)]  }
 
 Ltrinv = function(x,V,d = TRUE){ Y = matrix(0,ncol = V,nrow = V);
 Y[upper.tri(Y,d)]=x;return(Y + t(Y) - d*diag(diag(Y)))  }
-# 
-# estim_phi2 = function(input, batch, nonzero){
-#   phi2 = vector()
-#   ni = table(batch)
-#   names = unique(batch)
-#   n.batch = length(ni)
-#   for (i in 1:n.batch){
-#     index = which(batch==names[i])
-#     phi2[i] = estim_sigma(input[index,nonzero,drop=FALSE],method="MAD")^2
-#   }
-#   return(phi2)
-# }
+
+estim_phi2 = function(input, batch, nonzero){
+  phi2 = vector()
+  ni = table(batch)
+  names = unique(batch)
+  n.batch = length(ni)
+  for (i in 1:n.batch){
+    index = which(batch==names[i])
+    phi2[i] = var(c(input[index,nonzero,drop=FALSE])) #estim_sigma(input[index,nonzero,drop=FALSE],method="MAD")^2
+  }
+  return(phi2)
+}
 
 HOSVD_initial=function(Y, L, X, batch, nonzero){
   n = nrow(Y)
@@ -31,16 +31,15 @@ HOSVD_initial=function(Y, L, X, batch, nonzero){
   fit_hosvd = rTensor::hosvd(Yarray, ranks = c(n,L,L)) 
   
   U_ini = fit_hosvd$U[[2]]
-  U_ini = apply(U_ini, 2, scale)
+  U_ini = U_ini/norm(U_ini, type="2")
   S_ini = foreach(l=1:L, .combine="cbind")%do%{ Ltrans(tcrossprod(U_ini[,l])) }
-  A_ini = Y %*% S_ini %*% solve(crossprod(S_ini))
+  A_ini = Y[,nonzero] %*% S_ini[nonzero,] %*% solve(crossprod(S_ini[nonzero,]))
   B = lm(A_ini ~ X-1)$coef
   resid=lm(A_ini ~ X-1)$resid
   sigma2_ini=foreach(g=1:length(unique(batch)),.combine="rbind")%do%{
     apply(resid[groups[[g]],], 2,var)
   }
   E=Y - A_ini %*% t(S_ini)
-  phi2_ini = rep(var(c(E[,nonzero])),length(unique(batch)))
+  phi2_ini = estim_phi2(E, batch, nonzero)
   return(list(U = U_ini, S = S_ini, A = A_ini, phi2 = phi2_ini, B = B, sigma2=sigma2_ini))
 }
-
