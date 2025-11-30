@@ -1,7 +1,3 @@
-soft_thresh = function(X, t){ sign(X) * pmax(abs(X) - t, 0) } 
-
-fro_sq = function(M){ sum(M * M) } 
-
 Ltrans = function(X,d = TRUE){ X[upper.tri(X,d)]  }
 
 Ltrinv = function(x,V,d = TRUE){ Y = matrix(0,ncol = V,nrow = V);

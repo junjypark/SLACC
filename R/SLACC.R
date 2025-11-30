@@ -53,15 +53,15 @@ SLACC = function(dat, mod = NULL, L = 5, batch = NULL, maxIter = 20, eps = 1e-3,
     
     #Preliminary
     StS = crossprod(S[nonzero,,drop=FALSE])
-    Rinv = chol2inv(chol(R+1e-10*diag(L)))                    
+    Rinv = chol2inv(chol(R+1e-8*diag(L)))                    
     Q_list = vector("list", M)
     SigmaAinv_list = vector("list", M)          
     for (g in 1:M) {
       idx = groups[[g]]
-      d_g = sqrt(pmax(as.numeric(sigma2_g[g, ]), 1e-10)) 
+      d_g = sqrt(pmax(as.numeric(sigma2_g[g, ]), 1e-8)) 
       Dinv_g = diag(1/d_g, L, L)
       SigmaAinv_list[[g]] = Dinv_g %*% Rinv %*% Dinv_g
-      Q_list[[g]] = chol2inv(chol(SigmaAinv_list[[g]] + StS / phi2_g[g]+1e-10*diag(L)))
+      Q_list[[g]] = chol2inv(chol(SigmaAinv_list[[g]] + StS / phi2_g[g]+1e-8*diag(L)))
       A[idx, ] = (X[idx,,drop=FALSE] %*% B %*% SigmaAinv_list[[g]] + (dat[idx,nonzero,drop=FALSE] %*% S[nonzero,,drop=FALSE])/phi2_g[g]) %*% Q_list[[g]]
     }
 
@@ -73,7 +73,7 @@ SLACC = function(dat, mod = NULL, L = 5, batch = NULL, maxIter = 20, eps = 1e-3,
     prep$B_wts = (abs(U) <= tau) / tau
     w_g = vapply(groups, function(idx) sum(w[idx]), 0.0)
     Qbar = Reduce("+", Map(function(Qg, wg) wg * Qg, Q_list, as.list(w_g)))
-    Qbar = Qbar / sum(w_g)
+    Qbar = Qbar / sum(w_g) #new
     U = bilinear_admm(Y = prep$Y, A = prep$X, w = prep$subj_wts, Q = Qbar, C = prep$B_wts, U0=U, lambda = lambda/2, maxit = ADMM_maxIter, tol = ADMM_eps)$U
 
     for (l in 1:L){
@@ -92,7 +92,7 @@ SLACC = function(dat, mod = NULL, L = 5, batch = NULL, maxIter = 20, eps = 1e-3,
       H = H + kronecker(t(SigmaAinv_list[[g]]), crossprod(Xg))      
       b = b + as.vector(crossprod(Xg, Ag %*% SigmaAinv_list[[g]]))
     }
-    vecB = solve(H+1e-10*diag(q*L), b)                      
+    vecB = solve(H+1e-8*diag(q*L), b)                      
     B = matrix(vecB, nrow = q, ncol = L, byrow = FALSE)
 
     #M step - update sigma2
@@ -109,7 +109,7 @@ SLACC = function(dat, mod = NULL, L = 5, batch = NULL, maxIter = 20, eps = 1e-3,
       R_accum = R_accum + ng * Cg
     }
     R_raw = R_accum / n
-    R = cov2cor(R_raw+1e-10*diag(L))
+    R = cov2cor(R_raw+1e-8*diag(L))
 
     #M step - update phi2
     for (g in 1:M) {
@@ -135,11 +135,11 @@ SLACC = function(dat, mod = NULL, L = 5, batch = NULL, maxIter = 20, eps = 1e-3,
     dat_harmonized = matrix(0, nrow = n, ncol = p)
     
     wi = numeric(n)
-    for (g in seq_len(M)) wi[groups[[g]]] = 1/(2*pmax(as.numeric(phi2_g[g]), 1e-10))
+    for (g in seq_len(M)) wi[groups[[g]]] = 1/(2*pmax(as.numeric(phi2_g[g]), 1e-8))
     wi = wi / sum(wi)
     
     w_g = vapply(seq_len(M), function(g) sum(wi[groups[[g]]]), 0.0)
-    w_g = pmax(w_g, 1e-10); w_g <- w_g/sum(w_g)
+    w_g = pmax(w_g, 1e-8); w_g = w_g/sum(w_g)
     
     sigma2_star = as.numeric(colSums(sigma2_g * w_g))
     phi2_star = sum(w_g * phi2_g)    
