@@ -10,5 +10,8 @@ prepare_elements = function(dat, A, U, L, phi2, tau=NULL, ni){
     X[i,,] = diag(A[i,], ncol=L)
   }
   subj_wts = 1/phi2
+  
+  B_wts = (abs(U)<=tau)/tau    
+  
   return(list( Y=Y, X=X, subj_wts=subj_wts, B_wts=B_wts ))
 }
