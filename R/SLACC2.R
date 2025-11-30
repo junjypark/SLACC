@@ -56,7 +56,7 @@ SLACC2 = function(dat, mod = NULL, L = 5, batch = NULL, maxIter = 20, eps = 1e-3
     #M step - update U
     prep = prepare_elements(dat, A=A, U=U, L=L, phi2=phi2_g, tau=tau, ni=ni)
     w = prep$subj_wts
-    # w = w/sum(w) #new
+    w = w/sum(w) #new
     prep$subj_wts = w
     prep$B_wts = (abs(U) <= tau) / tau
     w_g = vapply(groups, function(idx) sum(w[idx]), 0.0)
