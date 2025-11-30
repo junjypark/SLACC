@@ -62,7 +62,7 @@ SLACC2 = function(dat, mod = NULL, L = 5, batch = NULL, maxIter = 20, eps = 1e-3
     w_g = vapply(groups, function(idx) sum(w[idx]), 0.0)
     Qbar = Reduce("+", Map(function(Qg, wg) wg * Qg, Q_list, as.list(w_g)))
     Qbar = Qbar / sum(w_g) #new
-    U = bilinear_admm(Y = prep$Y, A = prep$X, w = prep$subj_wts, Q = Qbar, C = prep$B_wts, U0=U, lambda = log(n)/2, maxit = ADMM_maxIter, tol = ADMM_eps)$U
+    U = bilinear_admm(Y = prep$Y, A = prep$X, w = prep$subj_wts, Q = Qbar, C = prep$B_wts, U0=U, lambda = lambda/2, maxit = ADMM_maxIter, tol = ADMM_eps)$U
     S = foreach(l=1:L,.combine="cbind")%do%{ Ltrans(tcrossprod(U[,l])) }
 
     #M step - update B
