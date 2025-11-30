@@ -39,7 +39,8 @@ HOSVD_initial=function(Y, L, X, batch, nonzero){
   sigma2_ini=foreach(g=1:length(unique(batch)),.combine="rbind")%do%{
     apply(resid[groups[[g]],], 2,var)
   }
-  E=Y - A_ini %*% t(S_ini)
+  R_ini = cor(resid)
+  E = Y - A_ini %*% t(S_ini)
   phi2_ini = estim_phi2(E, batch, nonzero)
-  return(list(U = U_ini, S = S_ini, A = A_ini, phi2 = phi2_ini, B = B, sigma2=sigma2_ini))
+  return(list(U = U_ini, S = S_ini, A = A_ini, phi2 = phi2_ini, B = B, sigma2=sigma2_ini, R=R_ini))
 }
