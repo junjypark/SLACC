@@ -19,28 +19,16 @@ SLACC = function(dat, mod = NULL, L = 5, batch = NULL, maxIter = 20, eps = 1e-3,
   nonzero = which(apply(dat,2,sum)!=0)
   p0 = length(nonzero)
   
-  if ( is.null(tau) ){ tau = 0.5*sqrt(log(V*L)/n) }
+  if ( is.null(tau) ){ tau = 0.3*sqrt(log(V*L)/n) }
   if ( is.null(lambda) ){ lambda = log(n*p0) }
 
   #Initialize
-  if (is.null(init)){
-    init = HOSVD_initial(dat, L, X, batch, nonzero)
-    A = init$A; B = init$B; U = U_prev = init$U; S = init$S;
-    phi2_g = init$phi2; sigma2_g = init$sigma2
-    R = diag(L)                            
-  }
-  else{ # L in init must be lower
-    est = init$estimates
-    A = est$A; U = U_prev = est$U; S = est$S; sigma2 = est$sigma2
-    L_init = ncol(est$U); L_diff = L-L_init
-    init =  HOSVD_initial(dat - tcrossprod(est$A, est$S), L_diff, X, batch)
-    A = cbind(est$A, init$A); B = cbind(est$B, init$B)
-    U = U_prev = cbind(est$U, init$U)
-    S = foreach(l=1:L, .combine="cbind")%do%{ Ltrans(tcrossprod(U[,l])) }
-    phi2_g = c(est$phi2, init$phi2); sigma2_g= cbind(est$sigma2, init$sigma2)
-    R = diag(L)                         
-  }
+  if (is.null(init)){ init = HOSVD_initial(dat, L, X, batch, nonzero) }
+  A = init$A; B = init$B; U = U_prev = init$U; S = init$S;
+  R= init$R
+  phi2_g = init$phi2; sigma2_g = init$sigma2
 
+  
   phi2_g = if (length(phi2_g) == 1) rep(as.numeric(phi2_g), M) else as.numeric(phi2_g)
   if (!is.matrix(sigma2_g) || nrow(sigma2_g) != M || ncol(sigma2_g) != L) {
     sigma2_g = matrix(rep(as.numeric(sigma2_g), length.out = M*L),nrow = M, ncol = L, byrow = TRUE)
