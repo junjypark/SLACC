@@ -10,7 +10,7 @@ estim_phi2 = function(input, batch, nonzero){
   n.batch = length(ni)
   for (i in 1:n.batch){
     index = which(batch==names[i])
-    phi2[i] = var(c(input[index,nonzero]))
+    phi2[i] = estim_sigma(input[index,nonzero,drop=FALSE],method="MAD")^2
   }
   return(phi2)
 }

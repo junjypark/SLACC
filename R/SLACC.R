@@ -19,7 +19,7 @@ SLACC = function(dat, mod = NULL, L = 5, batch = NULL, maxIter = 20, eps = 1e-3,
   nonzero = which(apply(dat,2,sum)!=0)
   p0 = length(nonzero)
   
-  if ( is.null(tau) ){ tau = 0.3*sqrt(log(V*L)/n) }
+  if ( is.null(tau) ){ tau = 0.5*sqrt(log(V*L)/n) }
   if ( is.null(lambda) ){ lambda = log(n*p0) }
 
   #Initialize
