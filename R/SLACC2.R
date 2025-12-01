@@ -57,8 +57,14 @@ SLACC2 = function(dat, mod = NULL, L = 5, batch = NULL, maxIter = 20, eps = 1e-3
     prep = prepare_elements(dat, A=A, U=U, L=L, phi2=phi2_g, tau=tau, ni=ni)
     w = prep$subj_wts
     U = bilinear_admm2(Y = prep$Y, A = prep$X, w = prep$subj_wts, Q = Q_list, groups=groups, C = prep$B_wts, U0=U, lambda = lambda/2, maxit = ADMM_maxIter, tol = ADMM_eps)$U
+    
+    for (l in 1:L){
+      sc = sqrt(sum(U[,l]^2))
+      U[,l] = U[,l]/sc; A[,l] = A[,l]*sc^2
+    }
     S = foreach(l=1:L,.combine="cbind")%do%{ Ltrans(tcrossprod(U[,l])) }
-
+    
+    
     #M step - update B
     H = matrix(0, q*L, q*L)
     b = numeric(q*L)
