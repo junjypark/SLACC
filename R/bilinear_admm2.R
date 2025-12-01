@@ -1,4 +1,4 @@
-bilinear_admm = function(Y, A, w, C, lambda,
+bilinear_admm2 = function(Y, A, w, C, lambda,
                          U0 = NULL, V0 = NULL, Q = NULL,
                          groups = NULL,          # <-- 추가: 배치별 인덱스 리스트
                          rho = 1.0, eta = 1.0, gamma = 1e-6,
