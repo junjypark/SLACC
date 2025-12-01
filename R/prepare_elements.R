@@ -9,7 +9,7 @@ prepare_elements = function(dat, A, U, L, phi2, tau=NULL, ni){
     Y[i,,] = Ltrinv(dat[i,],V)
     X[i,,] = diag(A[i,], ncol=L)
   }
-  subj_wts = 1/phi2
+  subj_wts = 1/phi2/2
   
   B_wts = (abs(U)<=tau)/tau    
   
