@@ -102,7 +102,7 @@ SLACC3 = function(dat, mod = NULL, L = 5, batch = NULL, maxIter = 20, eps = 1e-4
       phi2_g[g] = (sum(Rg^2) + ng * sum(diag(S[nonzero,,drop=FALSE] %*% Q_list[[g]] %*% t(S[nonzero,,drop=FALSE])))) / (ng * p0)
     }
     
-    order=align_loadings(U=U_prev,fit$estimates$U,method = "corr")
+    order=align_loadings(U=U_prev,U,method = "corr")
     Uhat=order$Uhat_aligned
 
     if ( norm(U_prev-Uhat, type="2")/V/L < eps){ break }
