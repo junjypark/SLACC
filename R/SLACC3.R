@@ -1,4 +1,4 @@
-SLACC3 = function(dat, mod = NULL, L = 5, batch = NULL, maxIter = 20, eps = 1e-3, ADMM_maxIter = 100, ADMM_eps = 1e-3, include_diag=T, init = NULL,
+SLACC3 = function(dat, mod = NULL, L = 5, batch = NULL, maxIter = 20, eps = 1e-4, ADMM_maxIter = 100, ADMM_eps = 1e-3, include_diag=T, init = NULL,
                  lambda = NULL, tau = NULL, harmonize = TRUE){
   n = nrow(dat); p = ncol(dat); V = (sqrt(1+8*p)-1)/2;
   
@@ -57,7 +57,7 @@ SLACC3 = function(dat, mod = NULL, L = 5, batch = NULL, maxIter = 20, eps = 1e-3
     #M step - update U
     prep = prepare_elements(dat, A=A, U=U, L=L, phi2=phi2_g, tau=tau, ni=ni)
     w = prep$subj_wts
-    U = bilinear_admm3(Y = prep$Y, A = prep$X, w = prep$subj_wts, Q = Q_list, groups=groups, C = prep$B_wts, U0=U, lambda = lambda/2, maxit = ADMM_maxIter, tol = ADMM_eps, include_diag=include_diag)$U
+    U = bilinear_admm3(Y = prep$Y, A = prep$X, w = prep$subj_wts, Q = Q_list, groups=groups, C = prep$B_wts, U0=U, V0=U, lambda = lambda/2, maxit = ADMM_maxIter, tol = ADMM_eps, include_diag=include_diag)$U
     
     for (l in 1:L){
       sc = sqrt(sum(U[,l]^2))
@@ -101,8 +101,11 @@ SLACC3 = function(dat, mod = NULL, L = 5, batch = NULL, maxIter = 20, eps = 1e-3
       Rg = dat[idx,nonzero,drop=FALSE] - tcrossprod(A[idx,,drop=FALSE], S[nonzero,,drop=FALSE])
       phi2_g[g] = (sum(Rg^2) + ng * sum(diag(S[nonzero,,drop=FALSE] %*% Q_list[[g]] %*% t(S[nonzero,,drop=FALSE])))) / (ng * p0)
     }
+    
+    order=align_loadings(U=U_prev,fit$estimates$U,method = "corr")
+    Uhat=order$Uhat_aligned
 
-    if ( norm(U_prev-U, type="2")/V/L < eps){ break }
+    if ( norm(U_prev-Uhat, type="2")/V/L < eps){ break }
     else{ U_prev=U }
   }
 
