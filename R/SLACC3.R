@@ -30,7 +30,6 @@ SLACC3 = function(dat, mod = NULL, L = 5, batch = NULL, maxIter = 20, eps = 1e-3
   R= init$R
   phi2_g = init$phi2; sigma2_g = init$sigma2
 
-  
   phi2_g = if (length(phi2_g) == 1) rep(as.numeric(phi2_g), M) else as.numeric(phi2_g)
   if (!is.matrix(sigma2_g) || nrow(sigma2_g) != M || ncol(sigma2_g) != L) {
     sigma2_g = matrix(rep(as.numeric(sigma2_g), length.out = M*L),nrow = M, ncol = L, byrow = TRUE)
