@@ -1,4 +1,4 @@
-SLACC2 = function(dat, mod = NULL, L = 5, batch = NULL, maxIter = 20, eps = 1e-3, ADMM_maxIter = 100, ADMM_eps = 1e-3, include_diag=T, init = NULL,
+SLACC3 = function(dat, mod = NULL, L = 5, batch = NULL, maxIter = 20, eps = 1e-3, ADMM_maxIter = 100, ADMM_eps = 1e-3, include_diag=T, init = NULL,
                  lambda = NULL, tau = NULL, harmonize = TRUE){
   n = nrow(dat); p = ncol(dat); V = (sqrt(1+8*p)-1)/2;
   
