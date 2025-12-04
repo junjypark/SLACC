@@ -28,13 +28,13 @@ HOSVD_initial = function(Y, L, X, batch, nonzero){
   for (i in 1:n){
     Yarray[i,,] = Ltrinv(Y[i,], V)
   }
-  Yarray = rTensor::as.tensor(Yarray)
+  Ytensor = rTensor::as.tensor(Yarray)
   
-  ## HOSVD rank는 최소 L0 = min(L, V)까지만
+  ## HOSVD는 rank L0 = min(L, V-1)까지만
   L0 = min(L, V-1)
-  fit_hosvd = rTensor::hosvd(Yarray, ranks = c(n, L0, L0))
+  fit_hosvd = rTensor::hosvd(Ytensor, ranks = c(n, L0, L0))
   
-  ## U, S, A, B, sigma2, R, phi2를 먼저 L0에 대해 계산
+  ## 기본 U, S (L0까지)
   U_ini0 = fit_hosvd$U[[2]][, 1:L0, drop = FALSE]   # V × L0
   U_ini0 = U_ini0 / norm(U_ini0, type = "2")
   
@@ -42,75 +42,50 @@ HOSVD_initial = function(Y, L, X, batch, nonzero){
     Ltrans(tcrossprod(U_ini0[, l]))
   }                                                # p × L0
   
-  XtX  <- crossprod(S_ini0[nonzero, , drop = FALSE])   # L0 × L0
-  eps  <- 1e-6 * mean(diag(XtX))                       # 스케일에 맞는 작은 값
-  XtXr <- XtX + eps * diag(ncol(XtX))
-  
-  A_ini0 <- Y[, nonzero, drop = FALSE] %*%
-    S_ini0[nonzero, , drop = FALSE] %*%
-    solve(XtXr)
-  
-  fit_lm0 = lm(A_ini0 ~ X - 1)
-  B0    = coef(fit_lm0)                     # q × L0
-  resid0 = residuals(fit_lm0)               # n × L0
-  
-  sigma2_ini0 = foreach(g = 1:M, .combine = "rbind") %do% {
-    apply(resid0[groups[[g]], , drop = FALSE], 2, var)
-  }                                         # M × L0
-  
-  R_ini0 = cor(resid0)                      # L0 × L0
-  
-  E0 = Y - A_ini0 %*% t(S_ini0)             # n × p
-  phi2_ini = estim_phi2(E0, batch, nonzero) # 길이 M (또는 스칼라)
-  
-  ## ---- L ≤ V 인 경우: 기존과 동일하게 리턴 ----
+  ## ---- L <= V 인 경우: 여기서 바로 ridge LS 후 리턴 ----
   if (L <= V) {
-    return(list(
-      U      = U_ini0,
-      S      = S_ini0,
-      A      = A_ini0,
-      phi2   = phi2_ini,
-      B      = B0,
-      sigma2 = sigma2_ini0,
-      R      = R_ini0
-    ))
+    S_ini = S_ini0
+    U_ini = U_ini0
+  } else {
+    ## ---- L > V 인 경우: 여분 축(L - L0)을 추가 ----
+    L_extra = L - L0
+    
+    ## (1) U: 기존 U_ini0 + 작은 랜덤 extra 축
+    U_extra = matrix(rnorm(V * L_extra, sd = 0.01), nrow = V, ncol = L_extra)
+    for (l in 1:L_extra) {
+      sc = sqrt(sum(U_extra[, l]^2))
+      if (sc > 0) U_extra[, l] = U_extra[, l] / sc
+    }
+    U_ini = cbind(U_ini0, U_extra)           # V × L
+    
+    ## (2) S: 기존 S_ini0 + U_extra로부터 만든 extra S
+    S_extra = foreach(l = 1:L_extra, .combine = "cbind") %do% {
+      Ltrans(tcrossprod(U_extra[, l]))
+    }                                        # p × L_extra
+    S_ini = cbind(S_ini0, S_extra)           # p × L
   }
   
-  ## ---- L > V 인 경우: 여분 축(L - L0)을 추가해서 확장 ----
-  L_extra = L - L0
+  ## ---- 공통: 확장된 S_ini(U_ini)에 대해 한 번 더 ridge LS로 A, B, sigma2, R, phi2 추정 ----
+  Xmat  <- S_ini[nonzero, , drop = FALSE]         # p0 × L
+  XtX   <- crossprod(Xmat)                        # L × L
+  eps   <- 1e-6 * mean(diag(XtX))
+  XtXr  <- XtX + eps * diag(ncol(XtX))
   
-  ## (1) U: 기존 U_ini0 + 작은 랜덤 extra 축
-  U_extra = matrix(rnorm(V * L_extra, sd = 0.01), nrow = V, ncol = L_extra)
-  for (l in 1:L_extra) {
-    sc = sqrt(sum(U_extra[, l]^2))
-    if (sc > 0) U_extra[, l] = U_extra[, l] / sc
-  }
-  U_ini = cbind(U_ini0, U_extra)           # V × L
+  A_ini <- Y[, nonzero, drop = FALSE] %*% Xmat %*% solve(XtXr)   # n × L
   
-  ## (2) S: 기존 S_ini0 + U_extra로부터 만든 extra S
-  S_extra = foreach(l = 1:L_extra, .combine = "cbind") %do% {
-    Ltrans(tcrossprod(U_extra[, l]))
-  }                                        # p × L_extra
-  S_ini = cbind(S_ini0, S_extra)           # p × L
+  fit_lm = lm(A_ini ~ X - 1)
+  B      = coef(fit_lm)                     # q × L
+  resid  = residuals(fit_lm)                # n × L
   
-  ## (3) A, B: extra 축은 0에서 시작 (처음엔 기여 거의 없게)
-  A_extra = matrix(0, nrow = n, ncol = L_extra)
-  A_ini   = cbind(A_ini0, A_extra)         # n × L
+  sigma2_ini = foreach(g = 1:M, .combine = "rbind") %do% {
+    apply(resid[groups[[g]], , drop = FALSE], 2, var)
+  }                                         # M × L
   
-  B_extra = matrix(0, nrow = ncol(X), ncol = L_extra)
-  B       = cbind(B0, B_extra)             # q × L
+  R_ini = cor(resid)                        # L × L
   
-  ## (4) sigma2: 기존 sigma2를 복제/요약해서 extra 축에 할당
-  #   여기서는 각 batch별 평균분산을 extra 컬럼으로 복사
-  sigma2_mean_batch = rowMeans(sigma2_ini0)        # 길이 M
-  sigma2_extra = matrix(sigma2_mean_batch, nrow = M, ncol = L_extra)
-  sigma2_ini   = cbind(sigma2_ini0, sigma2_extra)  # M × L
+  E = Y - A_ini %*% t(S_ini)                # n × p
+  phi2_ini = estim_phi2(E, batch, nonzero)  # 길이 M 또는 스칼라
   
-  ## (5) R: 기존 상관구조를 좌상단에, 나머지는 독립(단위행렬)
-  R_ini = diag(L)
-  R_ini[1:L0, 1:L0] = R_ini0
-  
-  ## phi2는 batch별 스칼라 그대로 사용
   return(list(
     U      = U_ini,
     S      = S_ini,
