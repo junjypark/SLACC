@@ -22,7 +22,7 @@ SLACC3 = function(dat, mod = NULL, L = 5, batch = NULL, maxIter = 20, eps = 1e-4
   p0 = length(nonzero)
   
   if ( is.null(tau) ){ tau = 0.5*sqrt(log(V*L)/n) }
-  if ( is.null(lambda_U) ){ lambda_U = log(n)+2*gamma*log(p0) }
+  if ( is.null(lambda_U) ){ lambda_U = log(n*p0) }
   if ( is.null(lambda_BIC)){ lambda_BIC = log(n)+ 2*gamma*log(p0)}
 
   #Initialize
@@ -109,7 +109,7 @@ SLACC3 = function(dat, mod = NULL, L = 5, batch = NULL, maxIter = 20, eps = 1e-4
     order=align_loadings(U=U_prev,U,method = "corr")
     Uhat=order$Uhat_aligned
 
-    if ( norm(U_prev-Uhat, type="2")/sqrt(V*L) < eps){ break }
+    if ( norm(U_prev-Uhat, type="2")/(V*L) < eps){ break }
     else{ U_prev=U }
   }
 
