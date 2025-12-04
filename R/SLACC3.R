@@ -1,5 +1,5 @@
 SLACC3 = function(dat, mod = NULL, L = 5, batch = NULL, maxIter = 20, eps = 1e-4, ADMM_maxIter = 100, ADMM_eps = 1e-3, include_diag=T, init = NULL,
-                 lambda = NULL, tau = NULL, harmonize = TRUE){
+                 lambda_U = NULL, lambda_BIC=NULL, tau = NULL, harmonize = TRUE){
   n = nrow(dat); p = ncol(dat); V = (sqrt(1+8*p)-1)/2;
   
   if (is.null(batch)){ batch = as.factor(rep("group 1", n)) } 
@@ -22,7 +22,8 @@ SLACC3 = function(dat, mod = NULL, L = 5, batch = NULL, maxIter = 20, eps = 1e-4
   p0 = length(nonzero)
   
   if ( is.null(tau) ){ tau = 0.5*sqrt(log(V*L)/n) }
-  if ( is.null(lambda) ){ lambda = log(n*p0) }
+  if ( is.null(lambda_U) ){ lambda_U = log(n*p0) }
+  if ( is.null(lambda_BIC)){ lambda_BIC = log(n*p0)}
 
   #Initialize
   if (is.null(init)){ init = HOSVD_initial(dat, L, X, batch, nonzero) }
@@ -57,7 +58,7 @@ SLACC3 = function(dat, mod = NULL, L = 5, batch = NULL, maxIter = 20, eps = 1e-4
     #M step - update U
     prep = prepare_elements(dat, A=A, U=U, L=L, phi2=phi2_g, tau=tau, ni=ni)
     w = prep$subj_wts
-    U = bilinear_admm3(Y = prep$Y, A = prep$X, w = prep$subj_wts, Q = Q_list, groups=groups, C = prep$B_wts, U0=U, V0=U, lambda = lambda/2, maxit = ADMM_maxIter, tol = ADMM_eps, include_diag=include_diag)$U
+    U = bilinear_admm3(Y = prep$Y, A = prep$X, w = prep$subj_wts, Q = Q_list, groups=groups, C = prep$B_wts, U0=U, V0=U, lambda = lambda_U/2, maxit = ADMM_maxIter, tol = ADMM_eps, include_diag=include_diag)$U
     
     for (l in 1:L){
       sc = sqrt(sum(U[,l]^2))
@@ -110,7 +111,7 @@ SLACC3 = function(dat, mod = NULL, L = 5, batch = NULL, maxIter = 20, eps = 1e-4
 
   ll = logLikSLACC_batch(dat[,nonzero,drop=FALSE], X, B, S[nonzero,,drop=FALSE], R, sigma2_by_batch = sigma2_g, phi2_by_batch = phi2_g, batch = batch)
   nparam = sum(U!=0) + q*L + M*L + M + L*(L-1)/2
-  BIC = -2*ll + lambda*nparam
+  BIC = -2*ll + lambda_BIC*nparam
 
   estimates = list(A = A, S = S, U = U, B = B, R = R, sigma2 = sigma2_g, phi2 = phi2_g)
   
