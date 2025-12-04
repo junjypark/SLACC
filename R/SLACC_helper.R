@@ -51,81 +51,45 @@ HOSVD_initial = function(Y, L, X, batch, nonzero){
   V = (sqrt(1 + 8*p) - 1) / 2
   
   groups = split(seq_len(n), batch)
-  M = length(groups)
   
+  ## 1) Y를 (n × V × V) 텐서로 복원
   Yarray = array(NA, dim = c(n, V, V))
   for (i in 1:n){
     Yarray[i,,] = Ltrinv(Y[i,], V)
   }
-  Yarray = rTensor::as.tensor(Yarray)
+  Ytensor = as.tensor(Yarray)
   
-  L0 = min(L, V)
-  fit_hosvd = rTensor::hosvd(Yarray, ranks = c(n, L0, L0))
+  ## 2) HOSVD로 초기 U 얻기
+  fit_hosvd = rTensor::hosvd(Ytensor, ranks = c(n, L, L))
+  U_ini = fit_hosvd$U[[2]]
+  U_ini = U_ini / norm(U_ini, type = "2")   # 전체 스케일 정규화 (원래 코드 유지)
   
-  ## U, S, A, B, sigma2, R, phi2를 먼저 L0에 대해 계산
-  U_ini0 = fit_hosvd$U[[2]][, 1:L0, drop = FALSE]   # V × L0
-  U_ini0 = U_ini0 / norm(U_ini0, type = "2")
-  
-  S_ini0 = foreach(l = 1:L0, .combine = "cbind") %do% {
-    Ltrans(tcrossprod(U_ini0[, l]))
-  }                                                # p × L0
-  
-  A_ini0 = Y[, nonzero, drop = FALSE] %*% 
-    S_ini0[nonzero, , drop = FALSE] %*% 
-    solve(crossprod(S_ini0[nonzero, , drop = FALSE]))      # n × L0
-  
-  fit_lm0 = lm(A_ini0 ~ X - 1)
-  B0    = coef(fit_lm0)                     # q × L0
-  resid0 = residuals(fit_lm0)               # n × L0
-  
-  sigma2_ini0 = foreach(g = 1:M, .combine = "rbind") %do% {
-    apply(resid0[groups[[g]], , drop = FALSE], 2, var)
-  }                                         # M × L0
-  
-  R_ini0 = cor(resid0)                      # L0 × L0
-  
-  E0 = Y - A_ini0 %*% t(S_ini0)             # n × p
-  phi2_ini = estim_phi2(E0, batch, nonzero) # 길이 M (또는 스칼라)
-  
-  ## ---- L ≤ V 인 경우: 기존과 동일하게 리턴 ----
-  if (L <= V) {
-    return(list(
-      U      = U_ini0,
-      S      = S_ini0,
-      A      = A_ini0,
-      phi2   = phi2_ini,
-      B      = B0,
-      sigma2 = sigma2_ini0,
-      R      = R_ini0
-    ))
+  ## 3) U_ini로부터 S_ini 구성
+  S_ini = foreach(l = 1:L, .combine = "cbind") %do% {
+    Ltrans(tcrossprod(U_ini[, l]))
   }
   
-  L_extra = L - L0
+  ## 4) ridge 붙인 LS로 A_ini 초기값 계산
+  Xmat  = S_ini[nonzero, , drop = FALSE]         # p0 × L
+  XtX   = crossprod(Xmat)                        # L × L
+  eps   = 1e-6 * mean(diag(XtX))                 # 스케일 맞춘 작은 ridge
+  XtXr  = XtX + eps * diag(ncol(XtX))            # ridge 추가된 Gram matrix
   
-  U_extra = matrix(rnorm(V * L_extra, sd = 0.01), nrow = V, ncol = L_extra)
-  for (l in 1:L_extra) {
-    sc = sqrt(sum(U_extra[, l]^2))
-    if (sc > 0) U_extra[, l] = U_extra[, l] / sc
+  A_ini = Y[, nonzero, drop = FALSE] %*% Xmat %*% solve(XtXr)  # n × L
+  
+  ## 5) B, resid, sigma2, R, phi2 초기값
+  fit_lm = lm(A_ini ~ X - 1)
+  B      = coef(fit_lm)
+  resid  = residuals(fit_lm)
+  
+  sigma2_ini = foreach(g = seq_along(groups), .combine = "rbind") %do% {
+    apply(resid[groups[[g]], , drop = FALSE], 2, var)
   }
-  U_ini = cbind(U_ini0, U_extra)           # V × L
   
-  S_extra = foreach(l = 1:L_extra, .combine = "cbind") %do% {
-    Ltrans(tcrossprod(U_extra[, l]))
-  }                                        # p × L_extra
-  S_ini = cbind(S_ini0, S_extra)           # p × L
+  R_ini = cor(resid)
   
-  A_extra = matrix(0, nrow = n, ncol = L_extra)
-  A_ini   = cbind(A_ini0, A_extra)         # n × L
-  
-  B_extra = matrix(0, nrow = ncol(X), ncol = L_extra)
-  B       = cbind(B0, B_extra)             # q × L
-  
-  sigma2_mean_batch = rowMeans(sigma2_ini0)        # 길이 M
-  sigma2_extra = matrix(sigma2_mean_batch, nrow = M, ncol = L_extra)
-  sigma2_ini   = cbind(sigma2_ini0, sigma2_extra)  # M × L
-  
-  R_ini = diag(L)
-  R_ini[1:L0, 1:L0] = R_ini0
+  E = Y - A_ini %*% t(S_ini)
+  phi2_ini = estim_phi2(E, batch, nonzero)
   
   return(list(
     U      = U_ini,
