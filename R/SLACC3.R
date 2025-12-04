@@ -65,7 +65,6 @@ SLACC3 = function(dat, mod = NULL, L = 5, batch = NULL, maxIter = 20, eps = 1e-4
     }
     S = foreach(l=1:L,.combine="cbind")%do%{ Ltrans(tcrossprod(U[,l])) }
     
-    
     #M step - update B
     H = matrix(0, q*L, q*L)
     b = numeric(q*L)
