@@ -1,4 +1,4 @@
-SLACC3 = function(dat, mod = NULL, L = 5, batch = NULL, maxIter = 20, eps = 1e-4, U_maxIter = 100, U_eps = 1e-3, include_diag=T, init = NULL,
+SLACC3 = function(dat, mod = NULL, L = 5, batch = NULL, maxIter = 20, eps = 1e-3, U_maxIter = 100, U_eps = 1e-3, include_diag=T, init = NULL,
                  lambda_U = NULL, tau = NULL, lambda_BIC=NULL, gamma = 0.5, harmonize = TRUE){
   n = nrow(dat); p = ncol(dat); V = (sqrt(1+8*p)-1)/2;
   
@@ -109,7 +109,7 @@ SLACC3 = function(dat, mod = NULL, L = 5, batch = NULL, maxIter = 20, eps = 1e-4
     order=align_loadings(U=U_prev,U,method = "corr")
     Uhat=order$Uhat_aligned
 
-    if ( norm(U_prev-Uhat, type="2")/(V*L) < eps){ break }
+    if ( norm(U_prev-Uhat, type="2")/sqrt(V*L) < eps){ break }
     else{ U_prev=U }
   }
 
