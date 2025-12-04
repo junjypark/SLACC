@@ -58,9 +58,9 @@ SLACC3 = function(dat, mod = NULL, L = 5, batch = NULL, maxIter = 20, eps = 1e-4
     #M step - update U
     prep = prepare_elements(dat, A=A, U=U, L=L, phi2=phi2_g, tau=tau, ni=ni)
     w = prep$subj_wts
-    if (lambda>0){
+    if (lambda_U>0){
       U = bilinear_admm3(Y = prep$Y, A = prep$X, w = prep$subj_wts, Q = Q_list, groups=groups, C = prep$B_wts, U0=U, V0=U, lambda = lambda_U/2, maxit = U_maxIter, tol = U_eps, include_diag=include_diag)$U
-    } else if (lambda==0){
+    } else if (lambda_U==0){
       U = bilinear_als3(Y = prep$Y, A = prep$X, w = prep$subj_wts, Q = Q_list, groups = groups, U0 = U, V0 = U, include_diag = include_diag, maxit = U_maxIter, tol = U_eps )$U
     }
     
