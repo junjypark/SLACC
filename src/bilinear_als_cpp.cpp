@@ -66,10 +66,10 @@ Rcpp::List bilinear_als3_cpp(const arma::cube& Y,     // V x V x n
     K = 0.5 * (K + K.t());
 
     arma::mat cholK;
-    bool ok = arma::chol(cholK, K, "sympd");
+    bool ok = arma::chol(cholK, K);
     if (!ok) {
       arma::mat K2 = K + 1e-8 * arma::eye<arma::mat>(Ldim, Ldim);
-      ok = arma::chol(cholK, K2, "sympd");
+      ok = arma::chol(cholK, K2);
       if (!ok) stop("chol failed in U-step");
     }
 
@@ -101,10 +101,10 @@ Rcpp::List bilinear_als3_cpp(const arma::cube& Y,     // V x V x n
     K2 = 0.5 * (K2 + K2.t());
 
     arma::mat cholK2;
-    ok = arma::chol(cholK2, K2, "sympd");
+    ok = arma::chol(cholK2, K2);
     if (!ok) {
       arma::mat K3 = K2 + 1e-8 * arma::eye<arma::mat>(Ldim, Ldim);
-      ok = arma::chol(cholK2, K3, "sympd");
+      ok = arma::chol(cholK2, K3);
       if (!ok) stop("chol failed in V-step");
     }
 
