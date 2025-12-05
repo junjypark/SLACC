@@ -1,6 +1,6 @@
 SLACC_harmonize = function(dat, batch, fit){
   n = nrow(dat); p = ncol(dat)
-  batch = fit$batch
+  batch = fit$input$batch
   ni = as.integer(table(batch))
   groups = split(seq_len(n), batch)
   M = length(groups)
@@ -9,7 +9,7 @@ SLACC_harmonize = function(dat, batch, fit){
   B = fit$estimates$B
   sigma2 = fit$estimates$sigma2
   phi2 = fit$estimates$phi2
-  X = fit$X
+  X = fit$input$X
   
   #Harmonization step
   estimates_harmonization = NULL
