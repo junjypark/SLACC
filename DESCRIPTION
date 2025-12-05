@@ -8,3 +8,5 @@ Description: TBD
 License: GPL-3
 Encoding: UTF-8
 Depends: MASS, denoiseR, rTensor, foreach
+Imports: Rcpp
+LinkingTo: Rcpp, RcppArmadillo

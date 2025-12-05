@@ -1,3 +1,6 @@
+useDynLib(SLACC, .registration = TRUE)
+importFrom(Rcpp, evalCpp)
+importFrom(RcppArmadillo)
 importFrom(foreach)
 importFrom(MASS)
 importFrom(rTensor)
