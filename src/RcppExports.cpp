@@ -11,9 +11,9 @@ Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
 Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
-// bilinear_admm3_cpp
-Rcpp::List bilinear_admm3_cpp(const arma::cube& Ycube, const arma::cube& Acube, const arma::vec& w, const arma::mat& C, const double lambda, arma::mat U, arma::mat V, const arma::mat& Qbar, const bool include_diag, const double rho, const double eta, const double gamma_par, const int maxit, const double tol, const int snap_to_Z_every);
-RcppExport SEXP _SLACC_bilinear_admm3_cpp(SEXP YcubeSEXP, SEXP AcubeSEXP, SEXP wSEXP, SEXP CSEXP, SEXP lambdaSEXP, SEXP USEXP, SEXP VSEXP, SEXP QbarSEXP, SEXP include_diagSEXP, SEXP rhoSEXP, SEXP etaSEXP, SEXP gamma_parSEXP, SEXP maxitSEXP, SEXP tolSEXP, SEXP snap_to_Z_everySEXP) {
+// bilinear_admm_cpp
+Rcpp::List bilinear_admm_cpp(const arma::cube& Ycube, const arma::cube& Acube, const arma::vec& w, const arma::mat& C, const double lambda, arma::mat U, arma::mat V, const arma::mat& Qbar, const bool include_diag, const double rho, const double eta, const double gamma_par, const int maxit, const double tol, const int snap_to_Z_every);
+RcppExport SEXP _SLACC_bilinear_admm_cpp(SEXP YcubeSEXP, SEXP AcubeSEXP, SEXP wSEXP, SEXP CSEXP, SEXP lambdaSEXP, SEXP USEXP, SEXP VSEXP, SEXP QbarSEXP, SEXP include_diagSEXP, SEXP rhoSEXP, SEXP etaSEXP, SEXP gamma_parSEXP, SEXP maxitSEXP, SEXP tolSEXP, SEXP snap_to_Z_everySEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
@@ -32,13 +32,34 @@ BEGIN_RCPP
     Rcpp::traits::input_parameter< const int >::type maxit(maxitSEXP);
     Rcpp::traits::input_parameter< const double >::type tol(tolSEXP);
     Rcpp::traits::input_parameter< const int >::type snap_to_Z_every(snap_to_Z_everySEXP);
-    rcpp_result_gen = Rcpp::wrap(bilinear_admm3_cpp(Ycube, Acube, w, C, lambda, U, V, Qbar, include_diag, rho, eta, gamma_par, maxit, tol, snap_to_Z_every));
+    rcpp_result_gen = Rcpp::wrap(bilinear_admm_cpp(Ycube, Acube, w, C, lambda, U, V, Qbar, include_diag, rho, eta, gamma_par, maxit, tol, snap_to_Z_every));
+    return rcpp_result_gen;
+END_RCPP
+}
+// bilinear_als3_cpp
+Rcpp::List bilinear_als3_cpp(const arma::cube& Y, const arma::cube& A, const arma::vec& w, arma::mat U, arma::mat V, const arma::mat& Qbar, const bool include_diag, const int maxit, const double tol, const double gamma);
+RcppExport SEXP _SLACC_bilinear_als3_cpp(SEXP YSEXP, SEXP ASEXP, SEXP wSEXP, SEXP USEXP, SEXP VSEXP, SEXP QbarSEXP, SEXP include_diagSEXP, SEXP maxitSEXP, SEXP tolSEXP, SEXP gammaSEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< const arma::cube& >::type Y(YSEXP);
+    Rcpp::traits::input_parameter< const arma::cube& >::type A(ASEXP);
+    Rcpp::traits::input_parameter< const arma::vec& >::type w(wSEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type U(USEXP);
+    Rcpp::traits::input_parameter< arma::mat >::type V(VSEXP);
+    Rcpp::traits::input_parameter< const arma::mat& >::type Qbar(QbarSEXP);
+    Rcpp::traits::input_parameter< const bool >::type include_diag(include_diagSEXP);
+    Rcpp::traits::input_parameter< const int >::type maxit(maxitSEXP);
+    Rcpp::traits::input_parameter< const double >::type tol(tolSEXP);
+    Rcpp::traits::input_parameter< const double >::type gamma(gammaSEXP);
+    rcpp_result_gen = Rcpp::wrap(bilinear_als3_cpp(Y, A, w, U, V, Qbar, include_diag, maxit, tol, gamma));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_SLACC_bilinear_admm3_cpp", (DL_FUNC) &_SLACC_bilinear_admm3_cpp, 15},
+    {"_SLACC_bilinear_admm_cpp", (DL_FUNC) &_SLACC_bilinear_admm_cpp, 15},
+    {"_SLACC_bilinear_als3_cpp", (DL_FUNC) &_SLACC_bilinear_als3_cpp, 10},
     {NULL, NULL, 0}
 };
 

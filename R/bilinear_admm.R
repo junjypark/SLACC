@@ -53,7 +53,7 @@ bilinear_admm = function(Y, A, w, C, lambda,
   Ycube = aperm(Y, c(2,3,1))
   Acube = aperm(A, c(2,3,1))
   
-  out = bilinear_admm3_cpp(
+  out = bilinear_admm_cpp(
     Ycube, Acube,
     w = w,
     C = C,

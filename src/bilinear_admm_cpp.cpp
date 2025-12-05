@@ -11,7 +11,7 @@ inline double sign_double(double x) {
 }
 
 // [[Rcpp::export]]
-Rcpp::List bilinear_admm3_cpp(const arma::cube &Ycube,   // V x V x n
+Rcpp::List bilinear_admm_cpp(const arma::cube &Ycube,   // V x V x n
                               const arma::cube &Acube,   // L x L x n
                               const arma::vec  &w,       // n
                               const arma::mat  &C,       // V x L
