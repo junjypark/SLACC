@@ -64,10 +64,10 @@ SLACC = function(dat, mod = NULL, L = 5, batch = NULL, include_diag = T, init = 
       U = bilinear_als(Y = prep$Y, A = prep$X, w = prep$subj_wts, Q = Q_list, groups = groups, U0 = U, V0 = U, include_diag = include_diag, maxit = U_maxIter, tol = U_eps )$U
     }
     
-    for (l in 1:L){
-      sc = sqrt(sum(U[,l]^2))
-      U[,l] = U[,l]/sc; A[,l] = A[,l]*sc^2
-    }
+    # for (l in 1:L){
+    #   sc = sqrt(sum(U[,l]^2))
+    #   U[,l] = U[,l]/sc; A[,l] = A[,l]*sc^2
+    # }
     S = foreach(l=1:L,.combine="cbind")%do%{ Ltrans(tcrossprod(U[,l])) }
     
     #M step - update B
