@@ -1,4 +1,4 @@
-SLACC3 = function(dat, mod = NULL, L = 5, batch = NULL, maxIter = 20, eps = 1e-3, U_maxIter = 100, U_eps = 1e-3, include_diag=T, init = NULL,
+SLACC3 = function(dat, mod = NULL, L = 5, batch = NULL, maxIter = 30, eps = 1e-3, U_maxIter = 100, U_eps = 1e-3, include_diag=T, init = NULL,
                  lambda_U = NULL, tau = NULL, lambda_BIC=NULL, gamma = 0.5, harmonize = TRUE){
   n = nrow(dat); p = ncol(dat); V = (sqrt(1+8*p)-1)/2;
   
@@ -22,8 +22,8 @@ SLACC3 = function(dat, mod = NULL, L = 5, batch = NULL, maxIter = 20, eps = 1e-3
   p0 = length(nonzero)
   
   if ( is.null(tau) ){ tau = 0.5*sqrt(log(V*L)/n) }
-  if ( is.null(lambda_U) ){ lambda_U = log(n*p0) }
-  if ( is.null(lambda_BIC)){ lambda_BIC = log(n)+ 2*gamma*log(p0)}
+  if ( is.null(lambda_U) ){ lambda_U = log(n*V*L) }
+  if ( is.null(lambda_BIC)){ lambda_BIC = log(n)+ 2*gamma*log(p0) }
 
   #Initialize
   if (is.null(init)){ init = HOSVD_initial(dat, L, X, batch, nonzero) }
@@ -117,7 +117,7 @@ SLACC3 = function(dat, mod = NULL, L = 5, batch = NULL, maxIter = 20, eps = 1e-3
   nparam = sum(U!=0) + q*L + M*L + M + L*(L-1)/2
   BIC = -2*ll + lambda_BIC*nparam
 
-  estimates = list(A = A, S = S, U = U, B = B, R = R, sigma2 = sigma2_g, phi2 = phi2_g)
+  estimates = list(A = A, S = S, U = U, B = B, R = R, sigma2 = sigma2_g, phi2 = phi2_g, df = nparam)
   
   #Harmonization step
   estimates_harmonization = NULL
