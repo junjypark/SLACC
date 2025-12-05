@@ -58,7 +58,6 @@ SLACC3 = function(dat, mod = NULL, L = 5, batch = NULL, include_diag = T, init =
     
     #M step - update U
     prep = prepare_elements(dat, A=A, U=U, L=L, phi2=phi2_g, tau=tau, ni=ni)
-    w = prep$subj_wts
     if (lambda_U>0){
       U = bilinear_admm3(Y = prep$Y, A = prep$X, w = prep$subj_wts, Q = Q_list, groups=groups, C = prep$B_wts, U0=U, V0=U, lambda = lambda_U/2, maxit = U_maxIter, tol = U_eps, include_diag=include_diag)$U
     } else if (lambda_U==0){
@@ -107,8 +106,8 @@ SLACC3 = function(dat, mod = NULL, L = 5, batch = NULL, include_diag = T, init =
       phi2_g[g] = (sum(Rg^2) + ng * sum(diag(S[nonzero,,drop=FALSE] %*% Q_list[[g]] %*% t(S[nonzero,,drop=FALSE])))) / (ng * p0)
     }
     
-    order=align_loadings(U=U_prev,U,method = "corr")
-    Uhat=order$Uhat_aligned
+    order = align_loadings(U=U_prev,U,method = "corr")
+    Uhat = order$Uhat_aligned
     
     if ( norm(U_prev-Uhat, type="2")/sqrt(V*L) < eps){ break }
     else{ U_prev=U }
@@ -123,7 +122,7 @@ SLACC3 = function(dat, mod = NULL, L = 5, batch = NULL, include_diag = T, init =
   input = list(X = X, L = L, batch = batch, lambda_U = lambda_U, lambda_BIC = lambda_BIC, tau = tau, gamma = gamma,
                maxIter = maxIter, eps = eps, U_maxIter = U_maxIter, U_eps = U_eps, include_diag = include_diag)
   
-  measure = list(logLik = logLi, BIC = BIC, df = nparam)
+  measure = list(logLik = ll, BIC = BIC, df = nparam)
   
   return(list(estimates = estimates, input = input, measure = measure))
 }
