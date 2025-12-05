@@ -159,7 +159,11 @@ Rcpp::List bilinear_admm_cpp(const arma::cube &Ycube,   // V x V x n
     double s_norm = rho * std::sqrt(
       fro_sq(ZU - ZU_old) + fro_sq(ZV - ZV_old)
     );
-    
+
+    double scale = std::sqrt( (double)Vdim * (double)Ldim );
+    r_norm /= scale;
+    s_norm /= scale;
+
     if (std::max(r_norm, s_norm) < tol) {
       // Rcpp::Rcout << "ADMM converged at iter " << (it+1) << std::endl;
       break;

@@ -113,6 +113,9 @@ Rcpp::List bilinear_als3_cpp(const arma::cube& Y,     // V x V x n
 
     double r_norm = std::sqrt(fro_sq(U_new - U) + fro_sq(V_new - V));
 
+    double scale = std::sqrt( (double)Vdim * (double)Ldim );
+    r_norm /= scale;
+
     U = U_new;
     V = V_new;
 
