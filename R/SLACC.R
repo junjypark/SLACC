@@ -140,6 +140,18 @@ SLACC = function(dat, mod = NULL, L = 5, batch = NULL, include_diag = T, init = 
     else{ U_prev=U }
   }
   
+  #Post-hoc scaling
+  for (l in 1:L){
+    sc = sqrt(sum(U[,l]^2))
+    if (sc > 0){
+      U[,l] = U[,l]/sc
+      A[,l] = A[,l]*sc^2
+      B[,l] = B[,l]*sc^2
+      sigma2_g[,l] = sigma2_g[,l]*sc^4
+    }
+  }
+  S = foreach(l=1:L, .combine="cbind") %do% { Ltrans(tcrossprod(U[,l])) }
+  
   ll = logLikSLACC_batch(dat[,nonzero,drop=FALSE], X, B[,active], S[nonzero,active,drop=FALSE], R[active,active], sigma2_by_batch = sigma2_g[,active], phi2_by_batch = phi2_g, batch = batch)
   nparam = sum(U!=0) + sum(B!=0) + sum(sigma2_g!=0) + M + sum(Ltrans(R[active,active], d = F)!=0)
   BIC = -2*ll + lambda_BIC*nparam
@@ -150,6 +162,6 @@ SLACC = function(dat, mod = NULL, L = 5, batch = NULL, include_diag = T, init = 
                maxIter = maxIter, eps = eps, U_maxIter = U_maxIter, U_eps = U_eps, include_diag = include_diag)
   
   measure = list(logLik = ll, BIC = BIC, df = nparam)
-  
+
   return(list(estimates = estimates, input = input, measure = measure))
 }
