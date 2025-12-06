@@ -64,23 +64,34 @@ SLACC = function(dat, mod = NULL, L = 5, batch = NULL, include_diag = T, init = 
       U = bilinear_als(Y = prep$Y, A = prep$X, w = prep$subj_wts, Q = Q_list, groups = groups, U0 = U, V0 = U, include_diag = include_diag, maxit = U_maxIter, tol = U_eps )$U
     }
     
-    dead = which(colSums(U^2) == 0)
-    if (length(dead) > 0) { A[, dead] = 0 }
+    active = which(colSums(U^2) != 0)
+    la = length(active)
+    if (la < L) { A[, -active] = 0 }
 
     S = foreach(l=1:L,.combine="cbind")%do%{ Ltrans(tcrossprod(U[,l])) }
     
     #M step - update B
-    H = matrix(0, q*L, q*L)
-    b = numeric(q*L)
-    for (g in seq_along(groups)) {
-      idx = groups[[g]]
-      Xg = X[idx,,drop=FALSE]         # n_g × q
-      Ag = A[idx,,drop=FALSE]          # n_g × L
-      H = H + kronecker(t(SigmaAinv_list[[g]]), crossprod(Xg))      
-      b = b + as.vector(crossprod(Xg, Ag %*% SigmaAinv_list[[g]]))
+    B = matrix(0, nrow = q, ncol = L) 
+    if (la > 0) {
+      H_act = matrix(0, q * la, q * la)
+      b_act = numeric(q * la)
+      
+      for (g in seq_along(groups)) {
+        idx <- groups[[g]]
+        Xg = X[idx,,drop = FALSE]          # n_g × q
+        Ag = A[idx,,drop = FALSE]          # n_g × L
+        
+        Ag_act = Ag[, active, drop = FALSE]   # n_g × la
+        SigA_g = SigmaAinv_list[[g]][active, active, drop = FALSE]  # la × la
+        
+        H_act = H_act + kronecker(t(SigA_g), crossprod(Xg))
+        b_act = b_act + as.vector(crossprod(Xg, Ag_act %*% SigA_g))
+      }
+      
+      H_act_reg = H_act + 1e-8 * diag(q * la)
+      vecB_act = solve(H_act_reg, b_act)
+      B[, active] = matrix(vecB_act, nrow = q, ncol = la, byrow = FALSE)
     }
-    vecB = solve(H+1e-8*diag(q*L), b)                      
-    B = matrix(vecB, nrow = q, ncol = L, byrow = FALSE)
     
     #M step - update sigma2
     R_accum = matrix(0, L, L); 
@@ -98,6 +109,12 @@ SLACC = function(dat, mod = NULL, L = 5, batch = NULL, include_diag = T, init = 
     R_raw = R_accum / n
     R = cov2cor(R_raw+1e-8*diag(L))
     
+    if (la < L) { 
+      sigma2_g[,-active] = 0
+      R[-active, ] = R[,-active] = 0
+      diag(R) = 1
+      }
+    
     #M step - update phi2
     for (g in 1:M) {
       idx = groups[[g]]; ng = length(idx)
@@ -113,7 +130,7 @@ SLACC = function(dat, mod = NULL, L = 5, batch = NULL, include_diag = T, init = 
   }
   
   ll = logLikSLACC_batch(dat[,nonzero,drop=FALSE], X, B, S[nonzero,,drop=FALSE], R, sigma2_by_batch = sigma2_g, phi2_by_batch = phi2_g, batch = batch)
-  nparam = sum(U!=0) + q*L + M*L + M + L*(L-1)/2
+  nparam = sum(U!=0) + sum(B!=0) + sum(sigma2_g!=0) + M + sum(Ltrans(R, d = F)!=0)
   BIC = -2*ll + lambda_BIC*nparam
   
   estimates = list(A = A, S = S, U = U, B = B, R = R, sigma2 = sigma2_g, phi2 = phi2_g)
