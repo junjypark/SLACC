@@ -38,28 +38,36 @@ SLACC = function(dat, mod = NULL, L = 5, batch = NULL, include_diag = T, init = 
   }
   
   Iter = 0
+  active = 1:L
+  la = length(active)
   while (Iter < maxIter){
     Iter=Iter+1
     cat(paste0("Iteration=",Iter), "\n")
     
     #Preliminary
-    StS = crossprod(S[nonzero,,drop=FALSE])
-    Rinv = chol2inv(chol(R+1e-8*diag(L)))                    
+    StS = crossprod(S[nonzero, active ,drop=FALSE])
+    Rinv = chol2inv(chol(R[active, active]+1e-8*diag(la)))                    
     Q_list = vector("list", M)
-    SigmaAinv_list = vector("list", M)          
+    SigmaAinv_list = vector("list", M)    
+    A = matrix(0,n,L)
     for (g in 1:M) {
       idx = groups[[g]]
-      d_g = sqrt(pmax(as.numeric(sigma2_g[g, ]), 1e-8)) 
-      Dinv_g = diag(1/d_g, L, L)
-      SigmaAinv_list[[g]] = Dinv_g %*% Rinv %*% Dinv_g
-      Q_list[[g]] = chol2inv(chol(SigmaAinv_list[[g]] + StS / phi2_g[g]+1e-8*diag(L)))
-      A[idx, ] = (X[idx,,drop=FALSE] %*% B %*% SigmaAinv_list[[g]] + (dat[idx,nonzero,drop=FALSE] %*% S[nonzero,,drop=FALSE])/phi2_g[g]) %*% Q_list[[g]]
+      d_g = sqrt(pmax(as.numeric(sigma2_g[g,active]), 1e-8)) 
+      Dinv_g = diag(1/d_g, la, la)
+      SigmaAinv_list[[g]] = matrix(0, L, L)
+      SigmaAinv_list[[g]][active,active] = Dinv_g %*% Rinv %*% Dinv_g
+      Q_list[[g]] = matrix(0,L,L)
+      Q_list[[g]][active,active] = chol2inv(chol(SigmaAinv_list[[g]][active,active] + StS / phi2_g[g]+1e-8*diag(la)))
+      A[idx, active] = (X[idx,,drop=FALSE] %*% B[,active,drop=FALSE] %*% SigmaAinv_list[[g]][active,active] + (dat[idx,nonzero,drop=FALSE] %*% S[nonzero,active,drop=FALSE])/phi2_g[g]) %*% Q_list[[g]][active,active]
     }
     
     #M step - update U
-    prep = prepare_elements(dat, A=A, U=U, L=L, phi2=phi2_g, tau=tau, ni=ni)
+    prep = prepare_elements(dat, A=A[,active], U=U[,active], L=la, phi2=phi2_g, tau=tau, ni=ni)
     if (lambda_U>0){
-      U = bilinear_admm(Y = prep$Y, A = prep$X, w = prep$subj_wts, Q = Q_list, groups=groups, C = prep$B_wts, U0=U, V0=U, lambda = lambda_U/2, maxit = U_maxIter, tol = U_eps, include_diag=include_diag)$U
+      Q_list_act = lapply(Q_list, function(Qg) Qg[active, active, drop = FALSE])
+      Utemp = bilinear_admm(Y = prep$Y, A = prep$X, w = prep$subj_wts, Q = Q_list_act, groups=groups, C = prep$B_wts, U0=U[,active], V0=U[,active], lambda = lambda_U/2, maxit = U_maxIter, tol = U_eps, include_diag=include_diag)$U
+      U = matrix(0, V, L)
+      U[,active] = Utemp
     } else if (lambda_U==0){
       U = bilinear_als(Y = prep$Y, A = prep$X, w = prep$subj_wts, Q = Q_list, groups = groups, U0 = U, V0 = U, include_diag = include_diag, maxit = U_maxIter, tol = U_eps )$U
     }
@@ -99,11 +107,14 @@ SLACC = function(dat, mod = NULL, L = 5, batch = NULL, include_diag = T, init = 
       idx = groups[[g]]; ng = length(idx)
       RgA = A[idx, , drop=FALSE] - X[idx, , drop=FALSE] %*% B   
       Sigma_hat_g = crossprod(RgA)/ng + Q_list[[g]]             
-      sigma2_g[g, ] = diag(Sigma_hat_g) 
-      Dg = diag(sqrt(sigma2_g[g, ]), L, L)
-      Cg = solve(Dg, Sigma_hat_g)
-      Cg = Cg %*% solve(Dg)
-      Cg = (Cg + t(Cg))/2
+      sigma2_g[g, active] = diag(Sigma_hat_g)[active]
+      sigma2_g[g, -active] = 0
+      Dg_act = diag(sqrt(sigma2_g[g, active,drop=FALSE]), la, la)
+      Cg_act = solve(Dg_act, Sigma_hat_g[active,active, drop=FALSE])
+      Cg_act = Cg_act %*% solve(Dg_act)
+      Cg_act = (Cg_act + t(Cg_act))/2
+      Cg = matrix(0, L, L)
+      Cg[active, active] = Cg_act
       R_accum = R_accum + ng * Cg
     }
     R_raw = R_accum / n
@@ -129,8 +140,8 @@ SLACC = function(dat, mod = NULL, L = 5, batch = NULL, include_diag = T, init = 
     else{ U_prev=U }
   }
   
-  ll = logLikSLACC_batch(dat[,nonzero,drop=FALSE], X, B, S[nonzero,,drop=FALSE], R, sigma2_by_batch = sigma2_g, phi2_by_batch = phi2_g, batch = batch)
-  nparam = sum(U!=0) + sum(B!=0) + sum(sigma2_g!=0) + M + sum(Ltrans(R, d = F)!=0)
+  ll = logLikSLACC_batch(dat[,nonzero,drop=FALSE], X, B[,active], S[nonzero,active,drop=FALSE], R[active,active], sigma2_by_batch = sigma2_g[,active], phi2_by_batch = phi2_g, batch = batch)
+  nparam = sum(U!=0) + sum(B!=0) + sum(sigma2_g!=0) + M + sum(Ltrans(R[active,active], d = F)!=0)
   BIC = -2*ll + lambda_BIC*nparam
   
   estimates = list(A = A, S = S, U = U, B = B, R = R, sigma2 = sigma2_g, phi2 = phi2_g)
