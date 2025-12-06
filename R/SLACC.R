@@ -109,7 +109,7 @@ SLACC = function(dat, mod = NULL, L = 5, batch = NULL, include_diag = T, init = 
       Sigma_hat_g = crossprod(RgA)/ng + Q_list[[g]]             
       sigma2_g[g, active] = diag(Sigma_hat_g)[active]
       sigma2_g[g, -active] = 0
-      Dg_act = diag(sqrt(sigma2_g[g, active,drop=FALSE]), la, la)
+      Dg_act = diag(sqrt(sigma2_g[g, active]), la, la)
       Cg_act = solve(Dg_act, Sigma_hat_g[active,active, drop=FALSE])
       Cg_act = Cg_act %*% solve(Dg_act)
       Cg_act = (Cg_act + t(Cg_act))/2
