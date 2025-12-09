@@ -172,24 +172,12 @@ SLACC_harmonize = function(dat, fit, mod = NULL, batch = NULL) {
     E_g = dat[idx, nonzero, drop = FALSE] -
       tcrossprod(A_new[idx, active, drop = FALSE], S_hat[nonzero, active, drop = FALSE])
     
-    
-    #TRIAL
-    mu_Eg = fit$estimates$resid_means[[as.character(batch_levels[g])]]
-    if (length(mu_Eg) != length(nonzero)) {
-      stop("Length of residual mean does not match number of nonzero edges.")
-    }
-    
-    E_g = sweep(E_g, 2, mu_Eg, "-")
-    
     sphi = sqrt(phi2_star / phi2_g[g])
     E_g_harmonized = sphi * E_g
     
-    Signal_g_harmonized =
-      tcrossprod(A_harmonized[idx, active, drop = FALSE],
-                 S_hat[nonzero, active, drop = FALSE])
+    Signal_g_harmonized = tcrossprod(A_harmonized[idx, active, drop = FALSE], S_hat[nonzero, active, drop = FALSE])
     
-    dat_harmonized[idx, nonzero] =
-      Signal_g_harmonized + E_g_harmonized
+    dat_harmonized[idx, nonzero] = Signal_g_harmonized + E_g_harmonized
   }
   
   ## --------- output ---------
