@@ -174,7 +174,7 @@ SLACC_harmonize = function(dat, fit, mod = NULL, batch = NULL) {
     
     
     #TRIAL
-    E_g[idx,nonzero] = E_g[idx,nonzero]-tcrossprod(rep(1, length(idx)),colMeans(E_g[idx,nonzero]))
+    E_g = sweep(E_g, 2, colMeans(E_g), "-")
     
     sphi = sqrt(phi2_star / phi2_g[g])
     E_g_harmonized = sphi * E_g
