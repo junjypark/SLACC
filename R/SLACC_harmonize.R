@@ -31,14 +31,14 @@ SLACC_harmonize = function(dat, fit, mod = NULL, batch = NULL) {
   M = length(groups_tr)
   batch_lvls = levels(batch_tr)
   
-  batch_tr <- as.factor(batch_tr)
-  batch_levels <- levels(batch_tr)
+  batch_tr = as.factor(batch_tr)
+  batch_levels = levels(batch_tr)
   
   if (!is.null(batch)) {
-    batch_char <- as.character(batch)  
-    batch_new  <- factor(batch_char, levels = batch_levels)
+    batch_char = as.character(batch)  
+    batch_new = factor(batch_char, levels = batch_levels)
     
-    bad_idx <- which(is.na(batch_new) & !is.na(batch_char))
+    bad_idx = which(is.na(batch_new) & !is.na(batch_char))
     if (length(bad_idx) > 0) {
       stop("External 'batch' has levels not seen in training: ",
            paste(unique(batch_char[bad_idx]), collapse = ", "))
