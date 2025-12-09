@@ -7,6 +7,7 @@ SLACC = function(dat, mod = NULL, L = 5, batch = NULL, include_diag = T, init = 
   ni = as.integer(table(batch))
   groups = split(seq_len(n), batch)
   M = length(groups)
+  batch_levels = levels(batch) 
   
   if (is.null(mod)){
     if ( M==1 ){ X = model.matrix(~1) } 
@@ -152,11 +153,23 @@ SLACC = function(dat, mod = NULL, L = 5, batch = NULL, include_diag = T, init = 
   }
   S = foreach(l=1:L, .combine="cbind") %do% { Ltrans(tcrossprod(U[,l])) }
   
+  resid_mean_list = vector("list", M)
+  names(resid_mean_list) = batch_levels
+  
+  for (g in seq_len(M)) {
+    idx = groups[[g]]
+    if (length(idx) == 0) next
+    
+    E_g = dat[idx, nonzero, drop = FALSE] - tcrossprod(A[idx, , drop = FALSE], S[nonzero, , drop = FALSE])
+    resid_mean_list[[g]] = colMeans(E_g)
+  }
+  
+  
   ll = logLikSLACC_batch(dat[,nonzero,drop=FALSE], X, B[,active], S[nonzero,active,drop=FALSE], R[active,active], sigma2_by_batch = sigma2_g[,active], phi2_by_batch = phi2_g, batch = batch)
   nparam = sum(U!=0) + sum(B!=0) + sum(sigma2_g!=0) + M + sum(Ltrans(R[active,active], d = F)!=0)
   BIC = -2*ll + lambda_BIC*nparam
   
-  estimates = list(A = A, S = S, U = U, B = B, R = R, sigma2 = sigma2_g, phi2 = phi2_g)
+  estimates = list(A = A, S = S, U = U, B = B, R = R, sigma2 = sigma2_g, phi2 = phi2_g, resid_means = resid_mean_list)
   
   input = list(X = X, L = L, batch = batch, lambda_U = lambda_U, lambda_BIC = lambda_BIC, tau = tau, gamma = gamma,
                maxIter = maxIter, eps = eps, U_maxIter = U_maxIter, U_eps = U_eps, include_diag = include_diag)

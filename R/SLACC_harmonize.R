@@ -174,7 +174,12 @@ SLACC_harmonize = function(dat, fit, mod = NULL, batch = NULL) {
     
     
     #TRIAL
-    E_g = sweep(E_g, 2, colMeans(E_g), "-")
+    mu_Eg = fit$estimates$resid_means[[as.character(batch_levels[g])]]
+    if (length(mu_Eg) != length(nonzero)) {
+      stop("Length of residual mean does not match number of nonzero edges.")
+    }
+    
+    E_g = sweep(E_g, 2, mu_Eg, "-")
     
     sphi = sqrt(phi2_star / phi2_g[g])
     E_g_harmonized = sphi * E_g
