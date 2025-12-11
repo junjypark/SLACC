@@ -1,6 +1,6 @@
 SLACC = function(dat, mod = NULL, L = 5, batch = NULL, include_diag = T, init = NULL,
                   maxIter = 30, eps = 1e-3, U_maxIter = 100, U_eps = 1e-3, 
-                  lambda_U = NULL, tau = NULL, lambda_BIC = NULL, gamma = 0.5){
+                  lambda_U = NULL, tau = NULL, lambda_BIC = NULL){
   n = nrow(dat); p = ncol(dat); V = (sqrt(1+8*p)-1)/2;
   
   if (is.null(batch)){ batch = as.factor(rep("group 1", n)) } 
@@ -167,14 +167,13 @@ SLACC = function(dat, mod = NULL, L = 5, batch = NULL, include_diag = T, init = 
   
   ll = logLikSLACC_batch(dat[,nonzero,drop=FALSE], X, B[,active], S[nonzero,active,drop=FALSE], R[active,active], sigma2_by_batch = sigma2_g[,active], phi2_by_batch = phi2_g, batch = batch)
   nparam = sum(U!=0) + sum(B!=0) + sum(sigma2_g!=0) + M + sum(Ltrans(R[active,active], d = F)!=0)
-  BIC = -2*ll + lambda_BIC*nparam
-  
+
   estimates = list(A = A, S = S, U = U, B = B, R = R, sigma2 = sigma2_g, phi2 = phi2_g, resid_means = resid_mean_list)
   
   input = list(X = X, L = L, batch = batch, lambda_U = lambda_U, lambda_BIC = lambda_BIC, tau = tau, gamma = gamma,
                maxIter = maxIter, eps = eps, U_maxIter = U_maxIter, U_eps = U_eps, include_diag = include_diag)
   
-  measure = list(logLik = ll, BIC = BIC, df = nparam)
+  measure = list(logLik = ll, df = nparam)
 
   return(list(estimates = estimates, input = input, measure = measure))
 }
