@@ -277,7 +277,8 @@ SLACC2_annealing = function(dat, mod = NULL, L = 5, batch = NULL, include_diag =
   
   measure = list(
     logLik = ll,
-    df     = nparam
+    df     = nparam,
+    Iter = Iter
   )
   
   return(list(estimates = estimates, input = input, measure = measure))
