@@ -1,0 +1,284 @@
+SLACC2_annealing = function(dat, mod = NULL, L = 5, batch = NULL, include_diag = TRUE, init = NULL,
+                 maxIter = 30, eps = 1e-3, U_maxIter = 100, U_eps = 1e-3, 
+                 lambda_U = NULL, tau = NULL, lambda_warmup_iter = NULL){
+  n  = nrow(dat)
+  p  = ncol(dat)
+  V  = (sqrt(1 + 8*p) - 1) / 2
+  
+  if (is.null(batch)) { batch = as.factor(rep("group 1", n)) }
+  ni      = as.integer(table(batch))
+  groups  = split(seq_len(n), batch)
+  M       = length(groups)
+  batch_levels = levels(batch)
+  
+  ## design X
+  if (is.null(mod)) {
+    if (M == 1) { 
+      X = model.matrix(~ 1) 
+    } else { 
+      X = cbind(model.matrix(~ batch - 1)) 
+    }
+  } else {
+    if (M == 1) { 
+      X = model.matrix(~ mod) 
+    } else { 
+      X = cbind(model.matrix(~ batch - 1), model.matrix(~ mod - 1)) 
+    }
+  }
+  
+  q = ncol(X)
+  
+  ## nonzero edges
+  if (include_diag) { 
+    nonzero = 1:p 
+  } else { 
+    nonzero = which(Ltrans(diag(V), d = TRUE) == 0) 
+  }
+  p0 = length(nonzero)
+  
+  ## tuning
+  if (is.null(tau))       { tau       = 0.5 * sqrt(log(V * L) / n) }
+  if (is.null(lambda_U))  { lambda_U  = log(n * V * L) }
+  
+  if (is.null(lambda_warmup_iter)) {
+    lambda_warmup_iter <- max(5L, floor(maxIter / 3))
+  }
+  
+  ## Initialize
+  if (is.null(init)) { 
+    init = HOSVD_initial(dat, L, X, batch, nonzero) 
+  }
+  A        = init$A
+  B        = init$B
+  U        = init$U
+  U_prev   = U
+  S        = init$S
+  R        = init$R     ## 초기 R을 받아오긴 하지만,
+  phi2_g   = init$phi2
+  sigma2_g = init$sigma2
+  
+  ## R을 항상 I_L로 고정
+  R = diag(L)
+  
+  ## phi2, sigma2 형식 정리
+  phi2_g = if (length(phi2_g) == 1) rep(as.numeric(phi2_g), M) else as.numeric(phi2_g)
+  if (!is.matrix(sigma2_g) || nrow(sigma2_g) != M || ncol(sigma2_g) != L) {
+    sigma2_g = matrix(rep(as.numeric(sigma2_g), length.out = M * L),
+                      nrow = M, ncol = L, byrow = TRUE)
+  }
+  
+  Iter   = 0
+  active = 1:L
+  la     = length(active)
+  
+  while (Iter < maxIter) {
+    Iter = Iter + 1
+    cat(paste0("Iteration=", Iter), "\n")
+    
+    ## ----- E-step for A -----
+    StS  = crossprod(S[nonzero, active, drop = FALSE])
+    Rinv = chol2inv(chol(R[active, active] + 1e-8 * diag(la)))  # 여기서 R = I
+    
+    Q_list        = vector("list", M)
+    SigmaAinv_list = vector("list", M)
+    A             = matrix(0, n, L)
+    
+    for (g in 1:M) {
+      idx  = groups[[g]]
+      d_g  = sqrt(pmax(as.numeric(sigma2_g[g, active]), 1e-8))
+      Dinv_g = diag(1 / d_g, la, la)
+      
+      SigmaAinv_list[[g]] = matrix(0, L, L)
+      SigmaAinv_list[[g]][active, active] = Dinv_g %*% Rinv %*% Dinv_g
+      
+      Q_list[[g]] = matrix(0, L, L)
+      Q_list[[g]][active, active] =
+        chol2inv(chol(SigmaAinv_list[[g]][active, active] +
+                        StS / phi2_g[g] + 1e-8 * diag(la)))
+      
+      A[idx, active] =
+        ( X[idx, , drop = FALSE] %*% B[, active, drop = FALSE] %*%
+            SigmaAinv_list[[g]][active, active] +
+            (dat[idx, nonzero, drop = FALSE] %*%
+               S[nonzero, active, drop = FALSE]) / phi2_g[g]
+        ) %*% Q_list[[g]][active, active]
+    }
+    
+    ## ----- M-step: update U -----
+    if (lambda_U > 0) {
+      if (Iter <= lambda_warmup_iter) {
+        # 0 -> lambda_U 까지 선형 증가
+        lambda_t <- lambda_U * (Iter / lambda_warmup_iter)
+      } else {
+        # warmup 끝나면 타겟 값으로 고정
+        lambda_t <- lambda_U
+      }
+    } else {
+      lambda_t <- 0
+    }
+    
+    prep = prepare_elements(dat, A = A[, active, drop = FALSE],
+                            U = U[, active, drop = FALSE],
+                            L = la, phi2 = phi2_g, tau = tau, ni = ni)
+    
+    if (lambda_t > 0) {
+      Q_list_act = lapply(Q_list, function(Qg) Qg[active, active, drop = FALSE])
+      Utemp = bilinear_admm(
+        Y = prep$Y, A = prep$X, w = prep$subj_wts,
+        Q = Q_list_act, groups = groups, C = prep$B_wts,
+        U0 = U[, active, drop = FALSE], V0 = U[, active, drop = FALSE],
+        lambda = lambda_t / 2, maxit = U_maxIter, tol = U_eps,
+        include_diag = include_diag
+      )$U
+      U = matrix(0, V, L)
+      U[, active] = Utemp
+    } else  {
+      U = bilinear_als(
+        Y = prep$Y, A = prep$X, w = prep$subj_wts,
+        Q = Q_list, groups = groups, U0 = U, V0 = U,
+        include_diag = include_diag, maxit = U_maxIter, tol = U_eps
+      )$U
+    }
+    
+    ## active set 갱신
+    active = which(colSums(U^2) != 0)
+    la     = length(active)
+    if (la < L) { A[, -active] = 0 }
+    
+    ## S 업데이트
+    S = foreach(l = 1:L, .combine = "cbind") %do% { Ltrans(tcrossprod(U[, l])) }
+    
+    ## ----- M-step: update B -----
+    B = matrix(0, nrow = q, ncol = L)
+    if (la > 0) {
+      H_act = matrix(0, q * la, q * la)
+      b_act = numeric(q * la)
+      
+      for (g in seq_along(groups)) {
+        idx = groups[[g]]
+        Xg  = X[idx, , drop = FALSE]         # n_g x q
+        Ag  = A[idx, , drop = FALSE]         # n_g x L
+        
+        Ag_act = Ag[, active, drop = FALSE]  # n_g x la
+        SigA_g = SigmaAinv_list[[g]][active, active, drop = FALSE]
+        
+        H_act = H_act + kronecker(t(SigA_g), crossprod(Xg))
+        b_act = b_act + as.vector(crossprod(Xg, Ag_act %*% SigA_g))
+      }
+      
+      H_act_reg = H_act + 1e-8 * diag(q * la)
+      vecB_act  = solve(H_act_reg, b_act)
+      B[, active] = matrix(vecB_act, nrow = q, ncol = la, byrow = FALSE)
+    }
+    
+    ## ----- M-step: update sigma2 (R은 고정, 업데이트 안 함) -----
+    for (g in 1:M) {
+      idx = groups[[g]]
+      ng  = length(idx)
+      
+      RgA = A[idx, , drop = FALSE] - X[idx, , drop = FALSE] %*% B
+      Sigma_hat_g = crossprod(RgA) / ng + Q_list[[g]]
+      
+      sigma2_g[g, active]   = diag(Sigma_hat_g)[active]
+      sigma2_g[g, -active]  = 0
+    }
+    ## 여기서 더 이상 R을 업데이트하지 않는다 (R = I_L 고정)
+    
+    ## ----- M-step: update phi2 -----
+    for (g in 1:M) {
+      idx = groups[[g]]
+      ng  = length(idx)
+      Rg  = dat[idx, nonzero, drop = FALSE] -
+        tcrossprod(A[idx, , drop = FALSE], S[nonzero, , drop = FALSE])
+      
+      phi2_g[g] =
+        ( sum(Rg^2) +
+            ng * sum(diag(S[nonzero, , drop = FALSE] %*%
+                            Q_list[[g]] %*%
+                            t(S[nonzero, , drop = FALSE])) )
+        ) / (ng * p0)
+    }
+    
+    ## ----- convergence check (loadings alignment) -----
+    order = align_loadings(U = U_prev, U, method = "corr")
+    Uhat  = order$Uhat_aligned
+    
+    if (norm(U_prev - Uhat, type = "2") / sqrt(V * L) < eps) {
+      break
+    } else {
+      U_prev = U
+    }
+  }
+  
+  ## ----- Post-hoc scaling -----
+  for (l in 1:L) {
+    sc = sqrt(sum(U[, l]^2))
+    if (sc > 0) {
+      U[, l]        = U[, l] / sc
+      A[, l]        = A[, l] * sc^2
+      B[, l]        = B[, l] * sc^2
+      sigma2_g[, l] = sigma2_g[, l] * sc^4
+    }
+  }
+  S = foreach(l = 1:L, .combine = "cbind") %do% { Ltrans(tcrossprod(U[, l])) }
+  
+  ## ----- residual means (for later harmonization) -----
+  resid_mean_list = vector("list", M)
+  names(resid_mean_list) = batch_levels
+  
+  for (g in seq_len(M)) {
+    idx = groups[[g]]
+    if (length(idx) == 0) next
+    
+    E_g = dat[idx, nonzero, drop = FALSE] -
+      tcrossprod(A[idx, , drop = FALSE], S[nonzero, , drop = FALSE])
+    
+    resid_mean_list[[g]] = colMeans(E_g)
+  }
+  
+  ## ----- log-likelihood (R = I_L) & df -----
+  ll = logLikSLACC_batch(
+    dat[, nonzero, drop = FALSE],
+    X,
+    B[, active, drop = FALSE],
+    S[nonzero, active, drop = FALSE],
+    R[active, active, drop = FALSE],            # 여기서는 I_la
+    sigma2_by_batch = sigma2_g[, active, drop = FALSE],
+    phi2_by_batch   = phi2_g,
+    batch = batch
+  )
+  
+  ## R은 더 이상 추정치가 아니므로 df에서 R 관련 자유도는 제외
+  nparam = sum(U != 0) + sum(B != 0) + sum(sigma2_g != 0) + M
+  
+  estimates = list(
+    A          = A,
+    S          = S,
+    U          = U,
+    B          = B,
+    R          = R,              # I_L
+    sigma2     = sigma2_g,
+    phi2       = phi2_g,
+    resid_means = resid_mean_list
+  )
+  
+  input = list(
+    X           = X,
+    L           = L,
+    batch       = batch,
+    lambda_U    = lambda_U,
+    tau         = tau,
+    maxIter     = maxIter,
+    eps         = eps,
+    U_maxIter   = U_maxIter,
+    U_eps       = U_eps,
+    include_diag = include_diag
+  )
+  
+  measure = list(
+    logLik = ll,
+    df     = nparam
+  )
+  
+  return(list(estimates = estimates, input = input, measure = measure))
+}
