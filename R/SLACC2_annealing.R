@@ -203,7 +203,7 @@ SLACC2_annealing = function(dat, mod = NULL, L = 5, batch = NULL, include_diag =
     order = align_loadings(U = U_prev, U, method = "corr")
     Uhat  = order$Uhat_aligned
     
-    if (norm(U_prev - Uhat, type = "2") / sqrt(V * L) < eps) {
+    if ( Iter > lambda_warmup_iter && norm(U_prev - Uhat, type = "2") / sqrt(V * L) < eps) {
       break
     } else {
       U_prev = U
