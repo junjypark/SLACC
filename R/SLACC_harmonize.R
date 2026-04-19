@@ -21,7 +21,7 @@ SLACC_harmonize = function(dat, fit, mod = NULL, batch = NULL) {
   if (include_diag) {
     nonzero = seq_len(p)
   } else {
-    V = (sqrt(1 + 8*p) - 1) / 2
+    V = (sqrt(1 + 8 * p) - 1) / 2
     nonzero = which(Ltrans(diag(V), d = TRUE) == 0)
   }
   p0 = length(nonzero)
@@ -30,12 +30,13 @@ SLACC_harmonize = function(dat, fit, mod = NULL, batch = NULL) {
   groups_tr = split(seq_along(batch_tr), batch_tr)
   M = length(groups_tr)
   batch_lvls = levels(batch_tr)
+  n_g = vapply(groups_tr, length, integer(1))
   
   batch_tr = as.factor(batch_tr)
   batch_levels = levels(batch_tr)
   
   if (!is.null(batch)) {
-    batch_char = as.character(batch)  
+    batch_char = as.character(batch)
     batch_new = factor(batch_char, levels = batch_levels)
     
     bad_idx = which(is.na(batch_new) & !is.na(batch_char))
@@ -45,15 +46,8 @@ SLACC_harmonize = function(dat, fit, mod = NULL, batch = NULL) {
     }
   }
   
-  wi_tr = numeric(length(batch_tr))
-  for (g in seq_len(M)) {
-    wi_tr[groups_tr[[g]]] = 1 / (2 * pmax(as.numeric(phi2_g[g]), 1e-8))
-  }
-  wi_tr = wi_tr / sum(wi_tr)
-  
-  ## batch-level weights
-  w_g = vapply(seq_len(M), function(g) sum(wi_tr[groups_tr[[g]]]), 0.0)
-  w_g = pmax(w_g, 1e-8)
+  ## manuscript Eq. (2.14): pooled targets weighted only by site sample sizes
+  w_g = pmax(as.numeric(n_g), 1e-8)
   w_g = w_g / sum(w_g)
   
   ## --------- active set in latent dimension ---------
@@ -70,7 +64,7 @@ SLACC_harmonize = function(dat, fit, mod = NULL, batch = NULL) {
       stop("For internal harmonization, 'dat' must have same n as training data.")
     }
     X_new = X_tr
-    batch_new  = batch_tr
+    batch_new = batch_tr
   } else if (!is.null(mod) && !is.null(batch)) {
     ## external harmonization
     batch_new = factor(batch, levels = batch_lvls)
@@ -109,36 +103,37 @@ SLACC_harmonize = function(dat, fit, mod = NULL, batch = NULL) {
   A_new = matrix(0, nrow = n, ncol = L)
   
   Rinv = chol2inv(chol(R_hat[active, active, drop = FALSE] + 1e-8 * diag(la)))
-  StS  = crossprod(S_hat[nonzero, active, drop = FALSE])
+  StS = crossprod(S_hat[nonzero, active, drop = FALSE])
   
   for (g in seq_len(M)) {
     idx = groups_new[[g]]
     if (length(idx) == 0) next
     
     d_g = sqrt(pmax(as.numeric(sigma2_g[g, active]), 1e-8))
-    Dinv_g  = diag(1 / d_g, la, la)
-    SigmaAinv_act = Dinv_g %*% Rinv %*% Dinv_g               # la x la
+    Dinv_g = diag(1 / d_g, la, la)
+    SigmaAinv_act = Dinv_g %*% Rinv %*% Dinv_g
     
     Q_g_act = chol2inv(chol(SigmaAinv_act + StS / phi2_g[g] +
-                              1e-8 * diag(la)))              # la x la
+                              1e-8 * diag(la)))
     
     A_new[idx, active] =
-      ( X_new[idx, , drop = FALSE] %*% B_hat[, active, drop = FALSE] %*% SigmaAinv_act +
-          (dat[idx, nonzero, drop = FALSE] %*%
-             S_hat[nonzero, active, drop = FALSE]) / phi2_g[g]
-      ) %*% Q_g_act
+      (X_new[idx, , drop = FALSE] %*% B_hat[, active, drop = FALSE] %*% SigmaAinv_act +
+         (dat[idx, nonzero, drop = FALSE] %*%
+            S_hat[nonzero, active, drop = FALSE]) / phi2_g[g]) %*% Q_g_act
   }
   
   ## --------- pooled variance sigma2*, phi2* (active only) ---------
+  ## manuscript Eq. (2.14): sigma_l^(h)^2 = sum_g (n_g / n) * sigma_gl^2
+  ## and phi^(h)^2 = sum_g (n_g / n) * phi_g^2
   sigma2_star_act = colSums(sigma2_g[, active, drop = FALSE] * w_g)
   phi2_star = sum(w_g * phi2_g)
   
   ## --------- mean harmonization in latent space ---------
-  gamma_hat = B_hat[1:M, active, drop = FALSE]    # M x la
-  center_vec = as.numeric(crossprod(w_g, gamma_hat))    # 1 x la
-  gamma_cent = sweep(gamma_hat, 2, center_vec, "-")     # M x la
+  gamma_hat = B_hat[1:M, active, drop = FALSE]
+  center_vec = as.numeric(crossprod(w_g, gamma_hat))
+  gamma_cent = sweep(gamma_hat, 2, center_vec, "-")
   
-  XB_all = X_new %*% B_hat                             # n x L
+  XB_all = X_new %*% B_hat
   XB_mean_harmonized = XB_all
   XB_mean_harmonized[, active] =
     XB_all[, active, drop = FALSE] -
@@ -151,14 +146,15 @@ SLACC_harmonize = function(dat, fit, mod = NULL, batch = NULL) {
     idx = groups_new[[g]]
     if (length(idx) == 0) next
     
-    A_resid_idx_act =A_new[idx,active,drop = FALSE] -
-      X_new[idx,,drop = FALSE] %*% B_hat[,active,drop = FALSE]
+    A_resid_idx_act = A_new[idx, active, drop = FALSE] -
+      X_new[idx, , drop = FALSE] %*% B_hat[, active, drop = FALSE]
     
     sf_act = sqrt(sigma2_star_act) / sqrt(pmax(as.numeric(sigma2_g[g, active]), 1e-8))
     
     A_resid_harmonized_act = sweep(A_resid_idx_act, 2, sf_act, "*")
     
-    A_harmonized[idx, active] = XB_mean_harmonized[idx, active, drop = FALSE] + A_resid_harmonized_act
+    A_harmonized[idx, active] =
+      XB_mean_harmonized[idx, active, drop = FALSE] + A_resid_harmonized_act
   }
   
   ## --------- residual harmonization & reconstruct data ---------
@@ -168,19 +164,18 @@ SLACC_harmonize = function(dat, fit, mod = NULL, batch = NULL) {
     idx = groups_new[[g]]
     if (length(idx) == 0) next
     
-    ## original residuals (latent part fixed to A_new)
     E_g = dat[idx, nonzero, drop = FALSE] -
       tcrossprod(A_new[idx, active, drop = FALSE], S_hat[nonzero, active, drop = FALSE])
     
     sphi = sqrt(phi2_star / phi2_g[g])
     E_g_harmonized = sphi * E_g
     
-    Signal_g_harmonized = tcrossprod(A_harmonized[idx, active, drop = FALSE], S_hat[nonzero, active, drop = FALSE])
+    Signal_g_harmonized = tcrossprod(A_harmonized[idx, active, drop = FALSE],
+                                     S_hat[nonzero, active, drop = FALSE])
     
     dat_harmonized[idx, nonzero] = Signal_g_harmonized + E_g_harmonized
   }
   
-  ## --------- output ---------
   estimates_harmonization = list(
     A_harmonized = A_harmonized,
     sigma2_star = sigma2_star_act,
